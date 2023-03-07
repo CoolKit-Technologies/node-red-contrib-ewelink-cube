@@ -1,0 +1,30 @@
+{
+    "event-state": {
+        "label": {
+            "name": "Name",
+            "server":"Server",
+            "device":"Device",
+            "state":"State"
+        },
+        "state":{
+            "power": "Device status",
+            "toggle": "Channel status",
+            "brightness": "Brightness",
+            "color_temperature": "Color temperature",
+            "color_rgb": "Color",
+            "percentage": "Open percentage",
+            "motor_control": "Motor status",
+            "motor_reverse": "Reverse",
+            "motor_clb": "Motor CLB",
+            "detect": "Detect",
+            "battery": "Battery",
+            "press": "Wireless button status",
+            "rssi": "RSSI",
+            "temperature":"Temperature",
+            "humidity":"Humidity"
+        },
+        "message": {
+            "connect_fail": "Failed to connect. Please check Server configuration. "
+        }
+    }
+}

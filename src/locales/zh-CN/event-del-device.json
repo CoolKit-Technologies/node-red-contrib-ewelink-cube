@@ -1,0 +1,12 @@
+{
+    "event-del-device": {
+        "label": {
+            "name": "名称",
+            "server": "服务器",
+            "device": "设备"
+        },
+        "message": {
+            "connect_fail": "Server已失去连接，请检查节点server配置"
+        }
+    }
+}

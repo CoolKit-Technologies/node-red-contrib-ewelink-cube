@@ -1,0 +1,35 @@
+<script type="text/markdown" data-help-name="event-state">
+A Node that listens for device status changes.
+
+## Configuration
+
+* Name-Node name
+
+* Server-Server node
+
+* Device-Device name
+
+* State-Device status
+
+## Output
+
+Device data for status changes.
+
+Example:
+``` javascript
+{
+    "endpoint": {
+      "serial_number": "serial_number",
+      "third_serial_number": "third_serial_number"
+    },
+    "payload": {
+      "power": {
+        "powerState": "on"
+      },
+      "brightness": {
+        "brightness": 100
+      }
+    }
+}
+```
+</script>

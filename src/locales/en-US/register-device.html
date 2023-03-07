@@ -1,0 +1,51 @@
+<script type="text/markdown" data-help-name="register-device">
+A Node to register devices.
+
+## Configuration
+
+* Name-Node name
+
+* Server-Server node
+
+* Device ID-Registered device ID
+
+* Device-Device name
+
+* Type-Device type
+
+* Ability-Registered device ability
+
+* Manufacturer-Registered device manufacturer
+
+* Model-Registered device model
+
+* Firmware version- Firmware version of registered device
+
+* Server IP- Current Node-RED Server IP
+
+* Tag-Registered device tag
+
+* Status- Registered device status
+
+## Output
+
+Return device results and related information.
+
+Example:
+``` javascript
+{
+    "header":{
+        "name":"Response",
+        "message_id":"766234ac-a522-481f-8eb0-1057ec52fce9",
+        "version":"1"
+    },"payload":{
+        "endpoints":[
+            {
+                "serial_number":"6c29a488-42da-4375-a908-f724fca0e207",
+                "third_serial_number":"fef8f0a0-67d1-47e5-b871-9cece65e954b"
+            }
+        ]
+    }
+}
+```
+</script>

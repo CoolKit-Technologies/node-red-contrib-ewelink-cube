@@ -1,0 +1,56 @@
+{
+    "register-device": {
+        "label": {
+            "name": "名称",
+            "server": "服务器",
+            "device_id": "设备 ID",
+            "device_name": "设备名称",
+            "category": "设备类别",
+            "capabilities": "设备能力",
+            "manufacturer": "制造商",
+            "model": "设备型号",
+            "fw_version": "固件版本",
+            "service_ip": "服务 IP",
+            "tags": "标签",
+            "state": "设备状态",
+            "toggle_num": "通道数"
+        },
+        "category": {
+            "plug": "插座",
+            "switch": "开关",
+            "light": "灯",
+            "curtain": "窗帘",
+            "contact_sensor": "门磁",
+            "motion_sensor": "PIR传感器",
+            "temperature_sensor": "温度传感器",
+            "humidity_sensor": "湿度传感器",
+            "temperature_and_humidity_sensor": "温湿度传感器",
+            "water_leak_detector": "水浸传感器",
+            "smoke_detector": "烟雾传感器",
+            "button": "无线按键"
+        },
+        "capability": {
+            "power": "开关状态",
+            "toggle": "通道开关状态",
+            "brightness": "亮度",
+            "color_temperature": "色温",
+            "color_rgb": "颜色",
+            "percentage": "窗帘百分比",
+            "motor_control": "窗帘电机状态",
+            "motor_reverse": "窗帘电机反转",
+            "motor_clb": "电机校准检测",
+            "detect": "状态检测",
+            "battery": "剩余电池检测",
+            "press": "按键检测",
+            "rssi": "无线信号强度检测",
+            "humidity": "湿度检测",
+            "temperature": "温度检测"
+        },
+        "message": {
+            "connect_fail": "Server已失去连接，请检查节点server配置"
+        },
+        "placeHolder":{
+            "service_ip":"当前 Node-RED 服务的 IP"
+        }
+    }
+}

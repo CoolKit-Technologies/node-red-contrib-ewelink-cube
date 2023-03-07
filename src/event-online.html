@@ -1,0 +1,139 @@
+<script type="text/html" data-template-name="event-online">
+    <div class="form-row">
+        <label for="node-input-name" data-i18n="event-online.label.name"></label>
+        <input type="text" id="node-input-name" placeholder="Name" />
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-server" data-i18n="event-online.label.server"></label>
+        <input type="text" id="node-input-server" placeholder="server" />
+    </div>
+    <div class="form-row">
+        <label for="node-input-device" data-i18n="event-online.label.device"></label>
+        <select id="node-input-device" placeholder="Device" style="width:70%"></select>
+    </div>
+</script>
+
+<script type="text/javascript">
+;(function () {
+    const DOM_ID_INPUT_DEVICE = '#node-input-device';
+    const DOM_ID_INPUT_SERVER = '#node-input-server';
+    const SERVER_EMPTY = '_ADD_';
+
+    function inputDeviceOnClickHandler() {
+        const server = $(DOM_ID_INPUT_SERVER).val();
+        if (server === SERVER_EMPTY) {
+            console.log('server empty');
+        } else {
+            $.ajax({
+                type: 'POST',
+                url: 'ewelink-cube-api-v1/get-device-list',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({ id: server }),
+                success(res) {
+                    if (res.error !== 0) {
+                        console.log('req failed')
+                    } else {
+                        const deviceList = res.data.device_list;
+                        // Clear select and insert an empty option.
+                        $(DOM_ID_INPUT_DEVICE).get(0).options.length = 0;
+                        $(DOM_ID_INPUT_DEVICE).append('<option style="display:none" value=""> </option><option value="all">ALL</option>');
+                        for (const device of deviceList) {
+                            const name = device.name || (device.manufacturer + device.display_category);
+                            const value = device.serial_number;
+                            $(DOM_ID_INPUT_DEVICE).append(`<option value="${value}">${name}</option>`);
+                        }
+                    }
+                },
+                error(err) {
+                    console.error(err);
+                }
+            });
+
+        }
+    }
+
+    RED.nodes.registerType('event-online', {
+        category: 'eWeLink Cube',
+        color: '#A4B9FC',
+        defaults: {
+            name: {
+                value: '',
+            },
+            server: {
+                value: '',
+                required: true,
+                type: 'api-server',
+            },
+            device: {
+                value: '',
+            }
+        },
+        inputs: 0,
+        outputs: 1,
+        icon: 'font-awesome/fa-rss',
+        paletteLabel: 'event: online',
+        label() {
+            return this.name || 'event-online';
+        },
+        oneditprepare() {
+            $(DOM_ID_INPUT_DEVICE).on('focus', inputDeviceOnClickHandler);
+
+            const node = this;
+            const server = node.server;
+            if (server === '') {
+                console.log('server empty');
+            } else {
+                $.ajax({
+                    type: 'POST',
+                    url: 'ewelink-cube-api-v1/get-device-list',
+                    contentType: 'application/json; charset=utf-8',
+                    data: JSON.stringify({ id: server }),
+                    success(res) {
+                        if (res.error !== 0) {
+                            console.log('req failed');
+                            if(server && server!==SERVER_EMPTY){
+                                RED.notify(`${node._('event-online.message.connect_fail')}`, { type: 'error' });
+                            }
+                        } else {
+                            const deviceList = res.data.device_list;
+                            // Clear select and insert an empty option.
+                            $(DOM_ID_INPUT_DEVICE).get(0).options.length = 0;
+                            $(DOM_ID_INPUT_DEVICE).append('<option style="display:none" value=""> </option><option value="all">ALL</option>');
+                            for (const device of deviceList) {
+                                const name = device.name || (device.manufacturer + device.display_category);
+                                const value = device.serial_number;
+                                $(DOM_ID_INPUT_DEVICE).append(`<option value="${value}">${name}</option>`);
+                            }
+                            if (node.server) {
+                                $(DOM_ID_INPUT_DEVICE).val(node.device);
+                            }
+                        }
+                    },
+                    error(err) {
+                        if(server && server!==SERVER_EMPTY){
+                            RED.notify(`${node._('event-online.message.connect_fail')}`, { type: 'error' });
+                        }
+                        console.error(err);
+                    }
+                });
+            }
+
+            $(DOM_ID_INPUT_SERVER).on('change', () => {
+                $(DOM_ID_INPUT_DEVICE).get(0).options.length = 0;
+                $(DOM_ID_INPUT_DEVICE).val('');
+            });
+        }
+    });
+})();
+</script>
+
+<style>
+    .require{
+        position:absolute;
+        left: -8px;
+        top: 10px;
+        color: red;
+        font-size: 20px;
+    }
+</style>

@@ -1,0 +1,56 @@
+{
+    "register-device": {
+        "label": {
+            "name": "Name",
+            "server": "Server",
+            "device_id": "Device ID",
+            "device_name": "Device name",
+            "category": "Category",
+            "capabilities": "Capabilities",
+            "manufacturer": "Manufacturer",
+            "model": "Model",
+            "fw_version": "FW version",
+            "service_ip": "Service IP",
+            "tags": "Tags",
+            "state": "State",
+            "toggle_num": "Toggle num"
+        },
+        "category": {
+            "plug": "Plug",
+            "switch": "Switch",
+            "light": "Light",
+            "curtain": "Curtain",
+            "contact_sensor": "Contact Sensor",
+            "motion_sensor": "Motion Sensor",
+            "temperature_sensor": "Temperature Sensor",
+            "humidity_sensor": "Humidity Sensor",
+            "temperature_and_humidity_sensor": "Temperature and Humidity Sensor",
+            "water_leak_detector": "Water Leak Detector",
+            "smoke_detector": "Smoke Detector",
+            "button": "Button"
+        },
+        "capability": {
+            "power": "Power",
+            "toggle": "Toggle",
+            "brightness": "Brightness",
+            "color_temperature": "Color Temperature",
+            "color_rgb": "Color RGB",
+            "percentage": "Percentage",
+            "motor_control": "Motor Control",
+            "motor_reverse": "Motor Reverse",
+            "motor_clb": "Motor CLB",
+            "detect": "Detect",
+            "battery": "Battery",
+            "press": "Press",
+            "rssi": "RSSI",
+            "humidity": "Humidity",
+            "temperature": "Temperature"
+        },
+        "message": {
+            "connect_fail": "Failed to connect. Please check Server configuration. "
+        },
+        "placeHolder":{
+            "service_ip":"Current Node-RED Server IP"
+        }
+    }
+}

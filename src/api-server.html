@@ -1,0 +1,343 @@
+<script type="text/html" data-template-name="api-server">
+    <div class="form-row">
+        <label for="node-config-input-name">
+            <i class="fa fa-tag"></i>
+            <span data-i18n="api-server.label.name"></span>
+        </label>
+        <input type="text" id="node-config-input-name">
+    </div>
+    <div class="form-row" style="position: relative;">
+        <span class="require">*</span>
+        <label for="node-config-input-ip">
+            <i class="fa fa-server"></i>
+            <span data-i18n="api-server.label.ip"></span>
+        </label>
+        <div style="display: inline-flex; width: 70%;">
+            <input type="text" id="node-config-input-ip" style="width: 100%; margin-right: 10px;" placeholder="localhost">
+            <a class="red-ui-button" id="node-config-input-search-btn">
+                <i class="fa fa-search"></i>
+            </a>
+        </div>
+        <div id="error-hint-input-ip" style="font-size: 12px; color: red; padding-left: 104px;"></div>
+    </div>
+    <div class="form-row">
+        <label>
+            <i class="fa fa-id-badge"></i>
+            <span data-i18n="api-server.label.token"></span>
+        </label>
+        <button id="node-config-input-get-token-btn" type="button" class="red-ui-button" style="width: 70%;background-color: #ccc;color: #ffff!important;" disabled>
+            <!-- Spin icon -->
+            <!-- <i class="fa fa-search spinner"></i> -->
+            <span class="btn-text" data-i18n="api-server.message.get_token"></span>
+            <span class="count-down" style="margin-left: 8px;"></span>
+        </button>
+        <!-- Store token -->
+        <input type="text" id="node-config-input-token" style="width: 0; height: 0; display: none;">
+        <div id="error-hint-get-token" style="font-size: 12px; color: red; padding-left: 104px;"></div>
+    </div>
+</script>
+
+<script type="text/javascript">
+;(function () {
+    const API_PREFIX = 'ewelink-cube-api-v1';
+    const DOM_ID_SEARCH_BTN = '#node-config-input-search-btn';
+    const DOM_ID_SEARCH_BTN_ICON = `${DOM_ID_SEARCH_BTN} i`;
+    const DOM_ID_GET_TOKEN_BTN = '#node-config-input-get-token-btn';
+    const DOM_ID_GET_TOKEN_BTN_ICON = `${DOM_ID_GET_TOKEN_BTN} i`;
+    const DOM_ID_GET_TOKEN_BTN_TEXT = `${DOM_ID_GET_TOKEN_BTN} .btn-text`;
+    const DOM_ID_GET_TOKEN_COUNT_DOWN = `${DOM_ID_GET_TOKEN_BTN} .count-down`;
+    const DOM_ID_INPUT_NAME = '#node-config-input-name';
+    const DOM_ID_INPUT_IP = '#node-config-input-ip';
+    const DOM_ID_INPUT_TOKEN = '#node-config-input-token';
+    const DOM_ID_ERROR_HINT_INPUT_IP = '#error-hint-input-ip';
+    const DOM_ID_ERROR_HINT_GET_TOKEN = '#error-hint-get-token';
+
+    // Count down timer
+    let countDownTimerId = null;
+
+    /**
+     * Set search button icon spin state.
+     */
+    function setSearchBtnIconSpin(val) {
+        if (val) {
+            $(DOM_ID_SEARCH_BTN_ICON).addClass('spinner');
+        } else {
+            $(DOM_ID_SEARCH_BTN_ICON).removeClass('spinner');
+        }
+    }
+
+    /**
+     * Set get token button spin state.
+     */
+    function setGetTokenBtnSpin(val) {
+        if (val) {
+            disableGetTokenBtn();
+            $(DOM_ID_GET_TOKEN_BTN_ICON).css('display', 'inline-block');
+            // $(DOM_ID_GET_TOKEN_BTN_TEXT).css('display', 'none');
+        } else {
+            $(DOM_ID_GET_TOKEN_BTN_ICON).css('display', 'none');
+            // $(DOM_ID_GET_TOKEN_BTN_TEXT).css('display', 'inline-block');
+        }
+    }
+
+    /**
+     * Enable get token button.
+     */
+    function enableGetTokenBtn() {
+        $(DOM_ID_GET_TOKEN_BTN).prop('disabled', false);
+        $(DOM_ID_GET_TOKEN_BTN).css('background-color','#1890ff');
+    }
+
+    /**
+     * Disable get token button.
+     */
+    function disableGetTokenBtn() {
+        $(DOM_ID_GET_TOKEN_BTN).prop('disabled', true);
+        $(DOM_ID_GET_TOKEN_BTN).css('background-color','#ccc');
+    }
+
+    /**
+     * Test token.
+     */
+    function testToken(ip, token) {
+        $.ajax({
+            type: 'POST',
+            url: `${API_PREFIX}/test-token`,
+            contentType: 'application/json; charset=utf-8',
+            data: JSON.stringify({ ip, token }),
+            success(res) {
+                if (res.error !== 0) {
+                    // wrong token
+                    enableGetTokenBtn();
+                }
+            },
+            error(err) {
+                console.error(err);
+                enableGetTokenBtn();
+            }
+        });
+    }
+
+    /**
+     * Search button click event handler.
+     */
+    function searchBtnOnClickHandler() {
+        const node = this;
+        const ip = $(DOM_ID_INPUT_IP).val().trim();
+        const token = $(DOM_ID_INPUT_TOKEN).val();
+        if (!ip) {
+            $(DOM_ID_ERROR_HINT_INPUT_IP).text(node._('api-server.message.please_input_ip'));
+            return;
+        } else {
+            const ipRegex = /(\b25[0-5]|\b2[0-4][0-9]|\b[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}/;
+            if (!ipRegex.test(ip) && ip !== 'ihost' && ip !== 'ihost.local' && ip !== 'eWelinkSmartPanel' && ip !== 'NSPanelPro' && ip !== 'eWeLinkSmartPanel') {
+                $(DOM_ID_ERROR_HINT_INPUT_IP).text(node._('api-server.message.invalid_ip'));
+                return;
+            } else {
+                setSearchBtnIconSpin(true);
+                $(DOM_ID_ERROR_HINT_INPUT_IP).text('');
+
+                $.ajax({
+                    type: 'POST',
+                    url: `${API_PREFIX}/get-bridge-info`,
+                    contentType: 'application/json; charset=utf-8',
+                    data: JSON.stringify({ ip }),
+                    success(res) {
+                        if (typeof res !== 'object') {
+                            console.log('not object');
+                        } else if (res.error !== 0) {
+                            $(DOM_ID_ERROR_HINT_INPUT_IP).text(node._('api-server.message.request_failed'));
+                        } else {
+                            RED.notify(node._('api-server.message.connect_success'), { type: 'success '});
+                            if (token) {
+                                testToken(ip, token);
+                            } else {
+                                enableGetTokenBtn();
+                                $(DOM_ID_GET_TOKEN_BTN_TEXT).text(node._('api-server.message.get_token'));
+                            }
+                        }
+                        setSearchBtnIconSpin(false);
+                    },
+                    error(err) {
+                        console.error(err);
+                        $(DOM_ID_ERROR_HINT_INPUT_IP).text(node._('api-server.message.request_failed'));
+                        setSearchBtnIconSpin(false);
+                        enableGetTokenBtn();
+                    }
+                });
+            }
+        }
+    }
+
+    /**
+     * Whether get token button exist.
+     */
+    function getTokenBtnExist() {
+        return $(DOM_ID_GET_TOKEN_BTN).length !== 0;
+    }
+
+    /**
+     * Format count.
+     */
+    function formatCount(count) {
+        const min = Math.floor(count / 60);
+        const sec = count % 60;
+        return `(${min}min${sec}s)`;
+    }
+
+    /**
+     * Set count down timer.
+     */
+    function setCountDown() {
+        let count = 300;
+        // Count 1 time.
+        $(DOM_ID_GET_TOKEN_COUNT_DOWN).text(`${formatCount(--count)}`);
+        countDownTimerId = setInterval(() => {
+            if (count > 0 && getTokenBtnExist()) {
+                $(DOM_ID_GET_TOKEN_COUNT_DOWN).text(`${formatCount(--count)}`);
+            } else {
+                count = 300;
+                $(DOM_ID_GET_TOKEN_COUNT_DOWN).text('');
+                clearInterval(countDownTimerId);
+            }
+        }, 1000);
+    }
+
+    /**
+     * Unset count down timer.
+     */
+    function unsetCountDown() {
+        $(DOM_ID_GET_TOKEN_COUNT_DOWN).text('');
+        clearInterval(countDownTimerId);
+    }
+
+    /**
+     * Get token button click event handler.
+     */
+    function getTokenBtnOnClickHandler() {
+        const node = this;
+        const ip = $('#node-config-input-ip').val().trim();
+        if (!ip) {
+            $(DOM_ID_ERROR_HINT_INPUT_IP).text(node._('api-server.message.please_input_ip'));
+            return;
+        }
+
+        $(DOM_ID_ERROR_HINT_INPUT_IP).text('');
+        setGetTokenBtnSpin(true);
+        setCountDown();
+
+        $.ajax({
+            type: 'POST',
+            url: `${API_PREFIX}/get-bridge-token`,
+            contentType: 'application/json; charset=utf-8',
+            data: JSON.stringify({ ip }),
+            success(res) {
+                console.log(res);
+                if (res.error === 0) {
+                    $(DOM_ID_ERROR_HINT_GET_TOKEN).text('');
+                    $(DOM_ID_INPUT_TOKEN).val(res.data.token);
+                    $(DOM_ID_GET_TOKEN_BTN_TEXT).text(node._('api-server.message.has_token'));
+                    RED.notify(node._('api-server.message.get_token_success'), { type: 'success '});
+                } else {
+                    $(DOM_ID_ERROR_HINT_GET_TOKEN).text(node._('api-server.message.request_failed'));
+                }
+                setGetTokenBtnSpin(false);
+                unsetCountDown();
+            },
+            error(err) {
+                console.log(err);
+                setGetTokenBtnSpin(false);
+                unsetCountDown();
+            }
+        })
+    }
+
+    // Emit all error logs.
+    RED.comms.subscribe('EVENT_NODE_RED_ERROR', (topic, payload) => {
+        RED.notify(payload.msg, { type: 'error' });
+    });
+
+    RED.nodes.registerType('api-server', {
+        category: 'config',
+        defaults: {
+            name: {
+                value: '',
+            },
+            ip: {
+                value: '',
+                required: true
+            },
+            token: {
+                value: '',
+                required: true
+            }
+        },
+        label() {
+            return this.name || this.ip || 'Token';
+        },
+        oneditprepare() {
+            const node = this;
+
+            // Set default name if input field is empty.
+            if ($(DOM_ID_INPUT_NAME).val() === '') {
+                $(DOM_ID_INPUT_NAME).val('Token');
+            }
+
+            // Hide get token button icon.
+            $(DOM_ID_GET_TOKEN_BTN_ICON).css('display', 'none');
+
+            // Set search button click event.
+            $(DOM_ID_SEARCH_BTN).on('click', searchBtnOnClickHandler.bind(this));
+
+            // Set get token button click event.
+            $(DOM_ID_GET_TOKEN_BTN).on('click', getTokenBtnOnClickHandler.bind(this));
+
+            // Set get token button text.
+            const token = $(DOM_ID_INPUT_TOKEN).val();
+            if (token) {
+                setTimeout(() => {
+                    $(DOM_ID_GET_TOKEN_BTN_TEXT).text(node._('api-server.message.has_token'));
+                }, 0);
+            }
+        },
+        oneditsave() {
+            // Cache api server node data when user clicks `save` button.
+            const id = this.id;
+            const name = $(DOM_ID_INPUT_NAME).val().trim();
+            const ip = $(DOM_ID_INPUT_IP).val().trim();
+            const token = $(DOM_ID_INPUT_TOKEN).val().trim();
+            $.ajax({
+                type: 'POST',
+                url: `${API_PREFIX}/cache/add-api-server-node`,
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({
+                    id,
+                    name,
+                    ip,
+                    token
+                })
+            });
+        },
+        oneditdelete() {
+            // Remove api server node data from cache when user clicks `delete` button.
+            const id = this.id;
+            $.ajax({
+                type: 'POST',
+                url: `${API_PREFIX}/cache/remove-api-server-node`,
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({ id })
+            });
+        }
+    });
+})();
+</script>
+
+<style>
+    .require{
+        position:absolute;
+        left: -8px;
+        top: 10px;
+        color: red;
+        font-size: 20px;
+    }
+</style>

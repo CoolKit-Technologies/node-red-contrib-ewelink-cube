@@ -1,0 +1,848 @@
+<script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
+<script type="text/javascript">
+    let tempList = [];
+    // colour
+    const COLOR_RGB = 'color-rgb';
+    // Color temperature
+    const COLOR_TEMPERATURE = 'color-temperature';
+    let outer_node = null;
+    //colorpicker
+    let colorPicker = null;
+    const SERVER_EMPTY = '_ADD_';
+
+    (function () {
+        //render option
+        function renderOptions(list, type) {
+            let dom = type == 'category' ? $('#node-input-category') : $('#node-input-device');
+            dom.get(0).options.length = 0;
+            if (!list.length || list.length < 1) return '';
+            var optionStr =
+                '<option selected="selected" disabled="disabled" style="display:none" value="">' + (type === 'category' ? '</option><option value="all">ALL</option>' : '');
+            for (const item of list) {
+                let content = type == 'category' ? item.display_category : item.name || item.manufacturer + item.display_category;
+                let value = type == 'category' ? item.display_category : item.serial_number;
+                if (type == 'device' || (type == 'category' && optionStr.indexOf(content) == -1)) {
+                    optionStr += '<option' + ' value=' + value + '>' + content + '</option>';
+                }
+            }
+            return optionStr;
+        }
+
+        //Unsupported device type
+        const supportedDeviceList = ['plug', 'switch', 'curtain', 'light'];
+
+        //Get deviceList
+        function getDeviceList(node) {
+            const server = $('#node-input-server').val();
+            $.ajax({
+                type: 'POST',
+                url: 'ewelink-cube-api-v1/get-device-list',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({ id: server }),
+                success(res) {
+                    if (res.error === 0) {
+                        if (res.data.device_list instanceof Array) {
+                            tempList = [];
+                            let deviceList = res.data.device_list;
+
+                            for (const item of deviceList) {
+                                if (supportedDeviceList.includes(item.display_category)) {
+                                    let params = {
+                                        serial_number: item.serial_number,
+                                        display_category: item.display_category,
+                                        name: item.name,
+                                        manufacturer: item.manufacturer,
+                                        state: item.state,
+                                        capabilities: item.capabilities,
+                                        tags: item.tags,
+                                    };
+                                    tempList.push(params);
+                                }
+                            }
+
+                            var categoryOption = renderOptions(tempList, 'category');
+                            $('#node-input-category').append(categoryOption);
+
+                            if (node.server) {
+                                $('#node-input-category').val(node.category);
+                                if (node.device) {
+                                    renderDeviceOpt(node);
+                                    //render action
+                                    renderActionByType(node);
+                                }else{
+                                    if($('#node-input-category').val() === 'all'){
+                                        var allDevice = renderOptions(tempList, 'device');
+                                        $('#node-input-device').append(allDevice);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (server && server !== SERVER_EMPTY) {
+                            RED.notify(`${node._('control-device.message.connect_fail')}`, { type: 'error' });
+                        }
+                    }
+                },
+                error(error) {
+                    if (server && server !== SERVER_EMPTY) {
+                        RED.notify(`${node._('control-device.message.connect_fail')}`, { type: 'error' });
+                    }
+                    console.log('network error', error);
+                },
+            });
+        }
+        //render device option
+        function renderDeviceOpt(node) {
+            var categoryVal = $('#node-input-category').val();
+            let deviceList = [];
+            for (const item of tempList) {
+                if (categoryVal == item.display_category) {
+                    deviceList.push(item);
+                }
+            }
+            if (deviceList.length === 0) deviceList = tempList;
+            var deviceOption = renderOptions(deviceList, 'device');
+            $('#node-input-device').append(deviceOption);
+            $('#node-input-device').val(node.device);
+        }
+
+        RED.nodes.registerType('control-device', {
+            category: 'eWeLink Cube',
+            color: '#9487FB',
+            defaults: {
+                name: {
+                    value: '',
+                },
+                server: {
+                    value: '',
+                    required: true,
+                    type: 'api-server',
+                },
+                list: {
+                    value: '',
+                },
+                category: {
+                    value: '',
+                },
+                device: {
+                    value: '',
+                    required: true,
+                },
+                action: {
+                    value: '',
+                },
+            },
+            inputs: 1,
+            outputs: 1,
+            icon: 'font-awesome/fa-toggle-off',
+            label() {
+                return this.name || 'control-device';
+            },
+            oneditprepare() {
+                // this.status({fill:"green",shape:"dot",text:"connected"});
+                const node = this;
+                outer_node = node;
+                const serverVal = $('#node-input-server').val();
+
+                $('#node-input-server').on('change', () => {
+                    $('#node-input-category').get(0).options.length = 0;
+                    $('#node-input-category').val('');
+                    $('#node-input-device').get(0).options.length = 0;
+                    $('#node-input-device').val('');
+                    $('.main-area').empty();
+                    getDeviceList(node);
+                });
+
+                if (serverVal && serverVal !== '_ADD_') {
+                    setTimeout(() => {
+                        getDeviceList(node);
+                    }, 100);
+                }
+                // $('#node-input-category').on('focus', () => {
+                //     getDeviceList(node);
+                // });
+
+                $('#node-input-category').on('change', () => {
+                    var categoryVal = $('#node-input-category').val();
+                    $('.main-area').empty();
+                    $('#node-input-device').val('');
+                    let deviceList = [];
+                    for (const item of tempList) {
+                        if (categoryVal == item.display_category) {
+                            deviceList.push(item);
+                        }
+                    }
+                    if (deviceList.length === 0) deviceList = tempList;
+                    var deviceOption = renderOptions(deviceList, 'device');
+                    $('#node-input-device').append(deviceOption);
+                    if (node.server) {
+                        $('#node-input-device').val(node.device);
+                    }
+                    renderActionByType(node);
+                });
+
+                $('#node-input-device').on('change', () => {
+                    renderActionByType(node);
+                });
+
+            },
+            oneditsave() {
+                this.category = $('#node-input-category').val();
+                this.device = $('#node-input-device').val();
+            }
+        });
+    })();
+
+    //render option
+    function renderOptionByList(List, node) {
+        if (!List || List.length < 1) return;
+        let templateStr = `<option selected="selected" value="">${node._('control-device.label.notSelect')}</option>`;
+        for (const item of List) {
+            templateStr += '<option' + ' value=' + item.value + '>' + item.name + '</option>';
+        }
+        return templateStr;
+    }
+
+    //category device
+    function renderActionByType(node) {
+        $('.main-area').empty();
+        const deviceVal = $('#node-input-device').val();
+        let device = {};
+        if (deviceVal) {
+            device = tempList.find((item) => item.serial_number === deviceVal);
+        }
+        const res = categoryComponentMapping(device, node);
+        $('.main-area').append(res);
+        //Initialize assignment
+        initialization(device, node);
+    }
+
+    function initialization(device, node) {
+        const listVal = $('#node-input-list').val();
+        if (!listVal) return;
+        let params = JSON.parse($('#node-input-list').val());
+        const deviceVal = $('#node-input-device').val();
+        if (params.deviceId === deviceVal) {
+            switch (device.display_category) {
+                case 'curtain':
+                    const isNotCalibration = device.state['motor-clb'].motorClb=== 'calibration';//string
+                    const isString = typeof params.curtain === 'string';
+                    //Re-assign the curtain stroke calibration change
+                    if((isString && !isNotCalibration) || (!isString && isNotCalibration)){
+                        params = { type: 'curtain', curtain: '', deviceId: deviceVal };
+                        $('#node-input-list').val(JSON.stringify(params));
+                    }
+                    if(isString){
+                        $('#curtainSelect').val(params.curtain);
+                    }else{
+                        $('#curtain').val(params.curtain);
+                    }
+                    break;
+                case 'plug':
+                case 'switch':
+                    const toggle = device.state.toggle;
+                    if (!toggle) {
+                        $('#single-switch').val(params.single);
+                    } else {
+                        $('.multi-swtich').each(function (index, item) {
+                            $(this).val(params.multi[index + 1]);
+                        });
+                    }
+                    break;
+                case 'light':
+                    $('#power').val(params.light.power);
+                    $('#brightness').val(params.light.brightness);
+                    $('#FiveOrTwoLight').val(params.light.type);
+                    changeMode();
+
+                    if (params.light.type === COLOR_RGB) {
+                        if (params.light.colorOrTemp) {
+                            $('#light-color').val(params.light.colorOrTemp);
+                            colorPicker.color.hexString = params.light.colorOrTemp;
+                        } else {
+                            $('#light-color').val('#ff0000');
+                            colorPicker.color.hexString = '#ff0000';
+                        }
+                        setColor();
+                    }
+                    if (params.light.type === COLOR_TEMPERATURE) {
+                        if (params.light.colorOrTemp) {
+                            $('#light-temp').val(params.light.colorOrTemp);
+                        }
+                    }
+                    const power = $('#power').val();
+                    if(power === 'off'){
+                        $('.brightness').hide();
+                        $('#colorAndtemp').hide();
+                        $('#brightness').val('');
+                        $('#light-color').val('');
+                        $('#light-temp').val('');
+                        $('.picker').hide();
+                    }else{
+                        $('.brightness').show();
+                        $('#colorAndtemp').show();
+                        $('.picker').show();
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+    //category mapping
+    function categoryComponentMapping(device, node) {
+        /** switch */
+        const switchSelect = {
+            multi: [
+                {
+                    name: node._('control-device.SelectOption.on'),
+                    value: 'on',
+                },
+                {
+                    name: node._('control-device.SelectOption.off'),
+                    value: 'off',
+                },
+                // {
+                //     name: node._('control-device.SelectOption.keep'),
+                //     value: 'keep',
+                // },
+                // {
+                //     name: node._('control-device.SelectOption.reverse'),
+                //     value: 'reverse',
+                // },
+            ],
+            single: [
+                {
+                    name: node._('control-device.SelectOption.on'),
+                    value: 'on',
+                },
+                {
+                    name: node._('control-device.SelectOption.off'),
+                    value: 'off',
+                },
+                // {
+                //     name: node._('control-device.SelectOption.reverse'),
+                //     value: 'reverse',
+                // },
+            ],
+        };
+
+        // light
+        const lightSelect = {
+            switch: [
+                {
+                    name: node._('control-device.SelectOption.on'),
+                    value: 'on',
+                },
+                {
+                    name: node._('control-device.SelectOption.off'),
+                    value: 'off',
+                },
+            ],
+        };
+
+        const curtain = {
+            option:[
+                {
+                    name: node._('control-device.SelectOption.all_on'),
+                    value: 'open',
+                },
+                {
+                    name: node._('control-device.SelectOption.all_off'),
+                    value: 'close',
+                },
+            ]
+        }
+
+        switch (device.display_category) {
+            case 'curtain':
+                const isNotCalibration = device.state['motor-clb'].motorClb=== 'calibration';
+                if(isNotCalibration){
+                    return `<div class='device'>
+                                <span class="device-name">${node._('control-device.label.control')}</span>
+                                <select id="curtainSelect" class="switch-select" onchange="curtainChangeSelect()">
+                                    ${renderOptionByList(curtain.option, node)}
+                                </select>
+                            </div>`;
+                }else{
+                    return `<div class='device'>
+                                <span class="device-name" style="width:120px!important">${node._('control-device.label.percentControl')}</span>
+                                <input
+                                    oninput="changeCurtainOnIput(this)"
+                                    type="number"
+                                    placeholder="${node._('control-device.label.percentValue')}(0%~100%)"
+                                    style="width:328px"
+                                    onblur="curtainChange(this)"
+                                    id="curtain"
+                                />
+                            </div>`;
+                }
+
+            case 'plug':
+            case 'switch':
+                let params = [];
+                let temp = '';
+                const toggle = device.state.toggle;
+                const flag = judgeObject(device.tags) && judgeObject(device.tags.toggle);
+                let toggleNameList = [];
+                if (flag) {
+                    toggleNameList = device.tags.toggle;
+                }
+                if (!toggle) {
+                    params.push(device.state.power);
+                    return (temp += `
+                            <div class='device'>
+                                <span class="device-name">${node._('control-device.label.switch')}</span>
+                                <select id="single-switch" class="switch-select" onchange="changeSwitch(this,'single')">
+                                    ${renderOptionByList(switchSelect.single, node)}
+                                </select>
+                            </div>
+                        `);
+                } else {
+                    params = Object.values(toggle); //object swtich${index + 1}
+                    params.forEach((item, index) => {
+                        temp += `
+                            <div class='device'>
+                                <span class="device-name">${flag ? toggleNameList[index + 1] : 'swtich' + (index + 1)}</span>
+                                <select class="multi-swtich" onchange="changeSwitch(this,'multi')">
+                                    ${renderOptionByList(switchSelect.multi, node)}
+                                </select>
+                            </div>
+                        `;
+                    });
+                    return temp;
+                }
+            case 'light':
+                const capabilities = device.capabilities;
+                const color_rgb = capabilities.some((item) => item.capability === COLOR_RGB); //5
+                const color_tempature = capabilities.some((item) => item.capability === COLOR_TEMPERATURE); //2
+                return `<div class="device">
+                            <span class="device-name">${node._('control-device.label.switch')}</span>
+                            <select class="switch-select" id="power" onchange="changeLightPower()">
+                                ${renderOptionByList(lightSelect.switch, node)}
+                            </select>
+                        </div>
+
+                        <div class="device brightness" style="position:relative">
+                            <span class="device-name">${node._('control-device.label.brightness')}</span>
+                            <input
+                                oninput="changeLightOniput(this)"
+                                type="number"
+                                class="switch-select"
+                                placeholder='${node._('control-device.label.brightnessPercent')}(1%-100%)'
+                                id="brightness"
+                                onblur="checkBrightness(this)"
+                            />
+                            <i class="clear" onClick="$('#brightness').val('');changeLight()">×</i>
+                        </div>
+
+                        <div id='colorAndtemp' class="device" style="display:${color_rgb || color_tempature ? 'block' : 'none'}!important;position:relative">
+                            <select
+                                class="half-action"
+                                style="width:90px!important;margin-right:16px;margin-left:-8px"
+                                id="FiveOrTwoLight"
+                                onchange='changeMode()'
+                            >
+                                <option value='color-temperature'>${node._('control-device.label.colourTemperature')}</option>
+                                <option value='color-rgb' style="display:${color_rgb ? 'block' : 'none'}">${node._('control-device.label.color')}</option>
+                            </select>
+                            <input
+                                id='light-temp'
+                                oninput='changeLightOniput(this)'
+                                type='number'
+                                class='switch-select'
+                                style='calc(100% - 102px)'
+                                onblur='checkColorTemperture(this)'
+                                placeholder='${node._('control-device.label.colourPercent')}(1%-100%)'
+                            />
+                            <i class="clearColor" onClick="$('#light-temp').val('');$('#light-color').val('');changeLight();setColor();">×</i>
+                        </div>`;
+            default:
+                return '';
+        }
+    }
+    function judgeObject(obj) {
+        return obj !== null && typeof obj === 'object';
+    }
+
+    //curtain
+    function curtainChange(e) {
+        const curtain = $('#curtain').val();
+        const reg = /^([0-9]?\d|100)$/;
+        if (!reg.test($('#curtain').val()) && curtain !== '') {
+            $('#curtain').val(Math.round(curtain));
+            RED.notify(`control-device: ${outer_node._('control-device.message.integer_limit')}`, { type: 'error' });
+        }
+        if(curtain === ''){
+            RED.notify(`control-device: ${outer_node._('control-device.message.integer_limit')}`, { type: 'error' });
+        }
+        e.value = e.value.replace(/[^0-9.]/g, '');
+
+        $('#node-input-list').val('');
+        const deviceVal = $('#node-input-device').val();
+        const params = { type: 'curtain', curtain: Number($('#curtain').val()), deviceId: deviceVal };
+        if (curtain) {
+            $('#node-input-list').val(JSON.stringify(params));
+        }
+    }
+    // curtain select
+    function curtainChangeSelect(){
+        const curtainVal = $('#curtainSelect').val();
+        $('#node-input-list').val('');
+        const deviceVal = $('#node-input-device').val();
+        const params = { type: 'curtain', curtain: curtainVal, deviceId: deviceVal };
+        if (curtainVal) {
+            $('#node-input-list').val(JSON.stringify(params));
+        }
+    }
+    //plug、Switch
+    function changeSwitch(value, type) {
+        $('#node-input-list').val('');
+        const deviceVal = $('#node-input-device').val();
+        let params = {};
+        if (type === 'single') {
+            const singleVal = $('#single-switch').val();
+            params = { type: 'single', single: singleVal, deviceId: deviceVal };
+            if (singleVal) {
+                $('#node-input-list').val(JSON.stringify(params));
+            }
+        } else if (type === 'multi') {
+            const multiVal = $('.multi-swtich');
+            let multi = {};
+            $('.multi-swtich').each(function (index, item) {
+                // if ($(this).val()) {
+                multi[index + 1] = $(this).val();
+                params.multi = multi;
+                params.deviceId = deviceVal;
+                params.type = 'multi';
+                // }
+            });
+            $('#node-input-list').val(JSON.stringify(params));
+        }
+    }
+
+    function changeMode() {
+        const type = $('#FiveOrTwoLight').val();
+        $('#light-color').remove();
+        $('#light-temp').remove();
+        $('.color-box').remove();
+        $('.picker').remove();
+        $('.clearColor').remove();
+
+        if (type === COLOR_TEMPERATURE) {
+            $('#colorAndtemp').append(
+                `<input
+                    id="light-temp"
+                    oninput="changeLightOniput(this)"
+                    type="number"
+                    class="switch-select"
+                    style='calc(100% - 102px)'
+                    onblur="checkColorTemperture(this)"
+                    placeholder='${outer_node._('control-device.label.colourPercent')} (1%-100%)'
+                />
+                <i class="clearColor" onClick="$('#light-temp').val('');$('#light-color').val('');changeLight();setColor();">×</i>
+                `
+            );
+        } else {
+            $('#colorAndtemp').append(
+                `
+                <i class="color-box"></i>
+                <input
+                    id="light-color"
+                    class="switch-select"
+                    style='width: calc((100% - 120px)/2) !important;height:28px;margin-left:11px'
+                    onblur="changeLight()"
+                    placeholder='${outer_node._('control-device.label.hexRgbValue')}'
+                    onchange="setColor(this)"
+                    onkeyup="value=value.replace(/[^#\dA-Fa-f/g,'')"
+                    maxlength="8"
+                    disabled
+                />
+                `
+            );
+            $('.main-area').append(
+                `<div class="picker">
+                    <div class="colorPicker"></div>
+                </div>`
+            );
+            colorPicker = new iro.ColorPicker('.colorPicker', {
+                width: 210,
+                color: 'rgb(255, 0, 47)', //#ff002f
+                borderWidth: 1,
+                borderColor: '#fff',
+                wheelLightness: false,
+            });
+            colorPicker.on('color:change', function (color) {
+                // console.log('>>>>>>>>>>>>>',color.hexString,color.rgbString,color.hslString);
+                $('#light-color').val(color.hexString);
+                setColor();
+                changeLight();
+            });
+            $('#light-color').val('#ff0000');
+            colorPicker.color.hexString = '#ff0000';
+            setColor();
+            changeLight();
+            // colorPicker.color.rgb = { r: 255, g: 255, b: 255 }
+        }
+    }
+    function checkBrightness(e) {
+        const reg = /^([1-9][0-9]{0,1}|100)$/;
+        if(e.value === ''){
+            RED.notify(`control-device: ${outer_node._('control-device.message.positive_integer_limit')}`, { type: 'error' });
+        }
+        const brightnessVal = $('#brightness').val();
+        if (!reg.test(brightnessVal) && brightnessVal !== '') {
+            if (brightnessVal == 0) {
+                $('#brightness').val(1);
+            } else {
+                $('#brightness').val(Math.round(brightnessVal));
+            }
+            RED.notify(`control-device: ${outer_node._('control-device.message.positive_integer_limit')}`, { type: 'error' });
+        }
+        e.value = e.value.replace(/[^0-9.]/g, '');
+        changeLight();
+    }
+    function changeLightOniput(e) {
+        if (!e.value) return;
+
+        if (e.value > 100) {
+            RED.notify(`control-device: ${outer_node._('control-device.message.positive_integer_limit')}`, { type: 'error' });
+            e.value = 100;
+        }
+
+        if (e.value < 0) {
+            RED.notify(`control-device: ${outer_node._('control-device.message.positive_integer_limit')}`, { type: 'error' });
+            e.value = 0;
+        }
+    }
+    function changeCurtainOnIput(e) {
+        if (!e.value) return;
+
+        if (e.value > 100) {
+            RED.notify(`control-device: ${outer_node._('control-device.message.integer_limit')}`, { type: 'error' });
+            e.value = 100;
+        }
+
+        if (e.value < 0) {
+            RED.notify(`control-device: ${outer_node._('control-device.message.integer_limit')}`, { type: 'error' });
+            e.value = 0;
+        }
+    }
+
+    function checkColorTemperture(e) {
+        const reg = /^([1-9][0-9]{0,1}|100)$/;
+        const colorVal = e.value;
+        if (colorVal == '') {
+            RED.notify(`control-device: ${outer_node._('control-device.message.positive_integer_limit')}`, { type: 'error' });
+        }
+        const colorTemp = $('#light-temp').val();
+
+        if (!reg.test(colorTemp) && colorTemp != '' && $('#FiveOrTwoLight').val() == COLOR_TEMPERATURE) {
+            if (colorTemp == 0) {
+                $('#light-temp').val(1);
+            } else {
+                $('#light-temp').val(Math.round(colorTemp));
+            }
+            RED.notify(`control-device: ${outer_node._('control-device.message.positive_integer_limit')}`, { type: 'error' });
+        }
+        e.value = e.value.replace(/[^0-9.]/g, '');
+        changeLight();
+    }
+    //light
+    function changeLight() {
+        const deviceVal = $('#node-input-device').val();
+        let device = tempList.find((item) => item.serial_number === deviceVal);
+        const powerVal = $('#power').val();
+        const brightness = $('#brightness').val();
+
+        //judge light type by capabilities
+        const capabilities = device.capabilities;
+        const color_rgb = capabilities.some((item) => item.capability === COLOR_RGB); //5
+        const color_tempature = capabilities.some((item) => item.capability === COLOR_TEMPERATURE); //2
+        let colorOrTemp = '';
+        let hslStr = '';
+        const lightType = $('#FiveOrTwoLight').val();
+        if (color_tempature && color_rgb) {
+            if (lightType === COLOR_TEMPERATURE) {
+                colorOrTemp = $('#light-temp').val();
+            } else if (lightType === COLOR_RGB) {
+                colorOrTemp = $('#light-color').val();
+                hslStr = $('.color-box').css('background-color');
+            }
+        } else if (color_tempature && !color_rgb) {
+            colorOrTemp = $('#light-temp').val();
+        }
+        const params = {
+            type: 'light',
+            deviceId: deviceVal,
+            light: {
+                power: powerVal,
+                brightness,
+                type: lightType,
+                colorOrTemp,
+                hslStr,
+            },
+        };
+        if (deviceVal) {
+            $('#node-input-list').val(JSON.stringify(params));
+        }
+    }
+
+    function changeLightPower(){
+        const power = $('#power').val();
+        if(power === 'off'){
+            $('.brightness').hide();
+            $('#colorAndtemp').hide();
+            $('#brightness').val('');
+            $('#light-color').val('');
+            $('#light-temp').val('');
+            $('.picker').hide();
+        }else{
+            $('.brightness').show();
+            $('#colorAndtemp').show();
+            $('.picker').show();
+        }
+        changeLight();
+    }
+
+    function setColor(value) {
+        const colorVal = $('#light-color').val();
+        if (colorVal) {
+            colorPicker.color.hexString = colorVal;
+        }
+        $('.color-box').css('background-color', colorVal);
+    }
+</script>
+
+<script type="text/html" data-template-name="control-device">
+    <div class="form-row">
+        <label for="node-input-name" data-i18n="control-device.label.name"></label>
+        <input type="text" id="node-input-name" placeholder="Name" />
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-server" data-i18n="control-device.label.server"></label>
+        <input type="text" id="node-input-server" placeholder="Server" />
+    </div>
+    <div class="form-row" style="display:none">
+        <label for="node-input-list"> List </label>
+        <input type="text" id="node-input-list" />
+    </div>
+    <div class="form-row">
+        <label for="node-input-category" data-i18n="control-device.label.category"></label>
+        <select id="node-input-category" placeholder="Category" style="width:70%"></select>
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-device" data-i18n="control-device.label.device"></label>
+        <select id="node-input-device" placeholder="Device" style="width:70%"></select>
+    </div>
+    <div id="action">
+        <header id="header" style="position:relative">
+            <span class="require" style="top:16px!important">*</span>
+            <span data-i18n="control-device.action.action"></span>
+        </header>
+        <div class="main-area"></div>
+    </div>
+</script>
+<style>
+    #action {
+        width: 92.8%;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+    }
+    #header {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        padding: 0 15px 0 15px;
+        height: 46px;
+        border-bottom: 1px solid #ccc;
+    }
+    #add-btn {
+        display: inline-block;
+        align-items: center;
+        width: 28px;
+        height: 28px;
+        line-height: 28px;
+        border-radius: 50%;
+        border: none;
+        background-color: #333bff;
+        color: white;
+    }
+    .main-area {
+        padding: 10px 0px 0 0;
+    }
+
+    .device {
+        display: flex;
+        justify-content: flex-start;
+        width: 90%;
+        margin: 0 0px 10px 15px;
+        line-height: 34px;
+    }
+    .device-name {
+        display: inline-block;
+        width: 102px !important;
+        text-align: left;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+    .switch-select,
+    .multi-swtich {
+        width: calc(100% - 102px) !important;
+    }
+    .half-action {
+        display: inline-block;
+        width: 140px !important;
+        margin-right: 10px;
+    }
+    .color-box {
+        display: inline-block;
+        /* width: 117px !important; */
+        height: 34px;
+        vertical-align: middle;
+        width: calc((100% - 130px)/2) !important;
+    }
+    .clear,
+    .clearColor {
+        position: absolute;
+        display: none;
+        top: 7px;
+        right: 25px;
+        width: 18px;
+        height: 18px;
+        line-height: 18px;
+        border-radius: 50%;
+        background-color: #ffff;
+        text-align: center;
+        color: #ccc;
+        cursor: pointer;
+        border: 1px solid #ccc;
+    }
+    .brightness:hover .clear {
+        display: block;
+    }
+    #colorAndtemp:hover .clearColor {
+        display: block;
+    }
+    .require {
+        position: absolute;
+        left: 5px !important;
+        top: 10px;
+        color: red;
+        font-size: 20px;
+    }
+    .form-row {
+        padding-left: 15px;
+    }
+    .IroSlider {
+        display: none !important;
+    }
+    .IroWheel {
+        margin: 0 auto;
+        margin-top: 16px;
+        margin-bottom: 16px;
+    }
+</style>

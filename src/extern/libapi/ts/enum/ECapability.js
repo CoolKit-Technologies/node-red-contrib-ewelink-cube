@@ -1,0 +1,25 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ECapability = void 0;
+var ECapability;
+(function (ECapability) {
+    ECapability["POWER"] = "power";
+    ECapability["RSSI"] = "rssi";
+    ECapability["OTA"] = "ota";
+    ECapability["DETECT"] = "detect";
+    ECapability["BATTERY"] = "battery";
+    ECapability["TOGGLE"] = "toggle";
+    ECapability["PERCENTAGE"] = "percentage";
+    ECapability["MOTOR_CONTROL"] = "motor-control";
+    ECapability["MOTOR_REVERSE"] = "motor-reverse";
+    ECapability["MOTOR_CLB"] = "motor-clb";
+    ECapability["TEMPERATURE"] = "temperature";
+    ECapability["HUMIDITY"] = "humidity";
+    ECapability["PRESS"] = "press";
+    ECapability["COLOR_RGB"] = "color-rgb";
+    ECapability["COLOR_TEMPERATURE"] = "color-temperature";
+    ECapability["BRIGHTNESS"] = "brightness";
+    ECapability["CAMERA_STREAM"] = "camera-stream";
+    ECapability["STARTUP"] = "startup";
+})(ECapability || (ECapability = {}));
+exports.ECapability = ECapability;

@@ -1,0 +1,48 @@
+<script type="text/markdown" data-help-name="event-add-device">
+A Node that listens for adding device information.
+
+## Configuration
+
+* Name-Node name
+
+* Server-Server node
+
+## Output
+
+Add device information.
+
+Example:
+``` javascript
+{
+    "payload": {
+      "serial_number": "ABCDEFGHIJK",
+      "third_serial_number": "third_serial_number",
+      "name": "my device name",
+      "manufacturer": "SONOFF",
+      "model": "BASICZBR3",
+      "firmware_version": "1.1.0",
+      "display_category": "switch",
+      "capabilities": [
+        {
+          "capability": "power",
+          "permission": "readWrite"
+        },
+        {
+          "capability": "rssi",
+          "permission": "read"
+        }
+      ],
+      "protocal": "zigbee",
+      "state": {
+        "power": {
+          "powerState": "on"
+        }
+      },
+      "tags": {
+        "key": "value"
+      },
+      "online": true
+    }
+}
+```
+</script>

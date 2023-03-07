@@ -1,0 +1,52 @@
+<script type="text/markdown" data-help-name="get-devices">
+获取设备列表信息节点。
+
+## 配置
+
+* 名称 - 节点名称
+
+* 服务器 - 服务器节点
+
+* 类别 - 设备类别
+
+* 设备 - 设备名称
+
+## 输出
+
+设备列表信息。
+
+示例：
+``` javascript
+    "device_list":  [
+      {
+        "serial_number": "ABCDEFGHIJK",
+        "third_serial_number": "third_serial_number",
+        "name": "我的设备",
+        "manufacturer": "SONOFF",
+        "model": "BASICZBR3",
+        "firmware_version": "1.1.0",
+        "display_category": "switch",
+        "capabilities": [
+          {
+            "capability": "power",
+            "permission": "readWrite"
+          },
+          {
+            "capability": "rssi",
+            "permission": "read"
+          }
+        ],
+        "protocal": "zigbee",
+        "state": {
+          "power": {
+            "powerState": "on"
+          }
+        },
+        "tags": {
+          "key": "value"
+        },
+        "online": true
+      }
+    ],
+```
+</script>

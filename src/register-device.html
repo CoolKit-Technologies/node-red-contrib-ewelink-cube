@@ -1,0 +1,500 @@
+<script type="text/html" data-template-name="register-device">
+    <div class="form-row">
+        <label for="node-input-name" data-i18n="register-device.label.name"></label>
+        <input type="text" id="node-input-name">
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-server" data-i18n="register-device.label.server"></label>
+        <input type="text" id="node-input-server">
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-device_id" data-i18n="register-device.label.device_id"></label>
+        <input type="text" id="node-input-device_id">
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-device_name" data-i18n="register-device.label.device_name"></label>
+        <input type="text" id="node-input-device_name">
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-category" data-i18n="register-device.label.category"></label>
+        <select name="node-input-category" id="node-input-category" style="width: 70%;"></select>
+    </div>
+    <div class="form-row" style="display: flex;position:relative">
+        <span class="require">*</span>
+        <label for="node-input-capabilities" style="padding: 6px 3px 0 0;" data-i18n="register-device.label.capabilities"></label>
+        <input type="text" id="node-input-capabilities" style="width: 0; height: 0; display: none;">
+        <div id="capa-list" style="display: inline-block; width: 70%;"></div>
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-manufacturer" data-i18n="register-device.label.manufacturer"></label>
+        <input type="text" id="node-input-manufacturer">
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-model" data-i18n="register-device.label.model"></label>
+        <input type="text" id="node-input-model">
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-firmware_version" data-i18n="register-device.label.fw_version"></label>
+        <input type="text" id="node-input-firmware_version">
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-service_address" data-i18n="register-device.label.service_ip"></label>
+        <input type="text" id="node-input-service_address" data-i18n="[placeholder]register-device.placeHolder.service_ip">
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-tags" data-i18n="register-device.label.tags"></label>
+        <input type="text" id="node-input-tags" style="width: 70%;">
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-state" data-i18n="register-device.label.state"></label>
+        <input type="text" id="node-input-state" style="width: 70%;">
+    </div>
+</script>
+
+<script type="text/javascript">
+;(function () {
+    const DOM_ID_INPUT_CATEGORY = '#node-input-category';
+    const DOM_ID_INPUT_CAPABILITIES = '#node-input-capabilities';
+    const DOM_ID_INPUT_TAGS = '#node-input-tags';
+    const DOM_ID_INPUT_STATE = '#node-input-state';
+    const DOM_ID_CAPA_LIST = '#capa-list';
+    const SERVER_EMPTY = '_ADD_';
+
+    RED.nodes.registerType('register-device', {
+        category: 'eWeLink Cube',
+        color: '#5F9AFD',
+        defaults: {
+            name: {
+                value: '',
+            },
+            server: {
+                value: '',
+                required: true,
+                type: 'api-server',
+            },
+            device_id: {
+                value: '',
+                required: true
+            },
+            device_name: {
+                value: '',
+                required: true
+            },
+            category: {
+                value: '',
+                required: true
+            },
+            capabilities: {
+                value: '',
+                required: true
+            },
+            manufacturer: {
+                value: '',
+                required: true
+            },
+            model: {
+                value: '',
+                required: true
+            },
+            firmware_version: {
+                value: '',
+                required: true
+            },
+            service_address: {
+                value: '',
+                required: true
+            },
+            tags: {
+                value: '',
+                required: true
+            },
+            state: {
+                value: '',
+                required: true
+            }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: 'font-awesome/fa-registered',
+        label() {
+            return this.name || 'register-device';
+        },
+        paletteLabel: 'register device',
+        oneditprepare() {
+            const server = $('#node-input-server').val();
+            if (server !== '_ADD_') {
+                $.ajax({
+                    type: 'POST',
+                    url: 'ewelink-cube-api-v1/get-device-list',
+                    contentType: 'application/json; charset=utf-8',
+                    data: JSON.stringify({ id: server }),
+                    success(res) {
+                        if (res.error !== 0) {
+                            RED.notify(`${node._('register-device.message.connect_fail')}`, { type: 'error' });
+                        }
+                    },
+                    error(error) {
+                        RED.notify(`${node._('register-device.message.connect_fail')}`, { type: 'error' });
+                        console.log('network error', error);
+                    },
+                });
+            }
+            const node = this;
+            // Device category list
+            const CATE_LIST = [
+                {
+                    id: 0,
+                    name: node._('register-device.category.plug'),
+                    value: 'plug'
+                },
+                {
+                    id: 1,
+                    name: node._('register-device.category.switch'),
+                    value: 'switch'
+                },
+                {
+                    id: 2,
+                    name: node._('register-device.category.light'),
+                    value: 'light'
+                },
+                {
+                    id: 3,
+                    name: node._('register-device.category.curtain'),
+                    value: 'curtain'
+                },
+                {
+                    id: 4,
+                    name: node._('register-device.category.contact_sensor'),
+                    value: 'contactSensor'
+                },
+                {
+                    id: 5,
+                    name: node._('register-device.category.motion_sensor'),
+                    value: 'motionSensor'
+                },
+                {
+                    id: 6,
+                    name: node._('register-device.category.temperature_sensor'),
+                    value: 'temperatureSensor'
+                },
+                {
+                    id: 7,
+                    name: node._('register-device.category.humidity_sensor'),
+                    value: 'humiditySensor'
+                },
+                {
+                    id: 8,
+                    name: node._('register-device.category.temperature_and_humidity_sensor'),
+                    value: 'temperatureAndHumiditySensor'
+                },
+                {
+                    id: 9,
+                    name: node._('register-device.category.water_leak_detector'),
+                    value: 'waterLeakDetector',
+                },
+                {
+                    id: 10,
+                    name: node._('register-device.category.smoke_detector'),
+                    value: 'smokeDetector',
+                },
+                {
+                    id: 11,
+                    name: node._('register-device.category.button'),
+                    value: 'button'
+                }
+            ];
+            // Device capability list
+            const CAPA_LIST = [
+                {
+                    id: 0,
+                    name: node._('register-device.capability.power'),
+                    value: 'power'
+                },
+                {
+                    id: 1,
+                    name: node._('register-device.capability.toggle'),
+                    value: 'toggle'
+                },
+                {
+                    id: 2,
+                    name: node._('register-device.capability.brightness'),
+                    value: 'brightness'
+                },
+                {
+                    id: 3,
+                    name: node._('register-device.capability.color_temperature'),
+                    value: 'color-temperature'
+                },
+                {
+                    id: 4,
+                    name: node._('register-device.capability.color_rgb'),
+                    value: 'color-rgb'
+                },
+                {
+                    id: 5,
+                    name: node._('register-device.capability.percentage'),
+                    value: 'percentage'
+                },
+                {
+                    id: 6,
+                    name: node._('register-device.capability.motor_control'),
+                    value: 'motor-control'
+                },
+                {
+                    id: 7,
+                    name: node._('register-device.capability.motor_reverse'),
+                    value: 'motor-reverse'
+                },
+                /* Unsupported
+                {
+                    id: 8,
+                    name: 'Startup',
+                    value: 'startup'
+                },
+                */
+                {
+                    id: 9,
+                    name: node._('register-device.capability.motor_clb'),
+                    value: 'motor-clb'
+                },
+                {
+                    id: 10,
+                    name: node._('register-device.capability.detect'),
+                    value: 'detect'
+                },
+                {
+                    id: 11,
+                    name: node._('register-device.capability.battery'),
+                    value: 'battery'
+                },
+                {
+                    id: 12,
+                    name: node._('register-device.capability.press'),
+                    value: 'press'
+                },
+                {
+                    id: 13,
+                    name: node._('register-device.capability.rssi'),
+                    value: 'rssi'
+                },
+                {
+                    id: 14,
+                    name: node._('register-device.capability.humidity'),
+                    value: 'humidity'
+                },
+                {
+                    id: 15,
+                    name: node._('register-device.capability.temperature'),
+                    value: 'temperature'
+                }
+            ];
+            const TOGGLE_SELECT_HTML_STR = `<br><span style="padding-right: 8px; vertical-align: middle; display: inline-block; margin-top: 6px;">${node._('register-device.label.toggle_num')}</span><select id="capa-toggle-select" style="margin-top: 8px;"><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>`;
+            const ADD_ITEM_BTN_HTML_STR = '<span class="add-item-btn">+</span>';
+            const DEL_ITEM_BTN_HTML_STR = '<span class="del-item-btn">-</span>';
+
+            $(DOM_ID_INPUT_TAGS).typedInput({
+                type: 'json',
+                types: ['json']
+            });
+
+            $(DOM_ID_INPUT_STATE).typedInput({
+                type: 'json',
+                types: ['json']
+            });
+
+            // Render category list.
+            for (const item of CATE_LIST) {
+                $(DOM_ID_INPUT_CATEGORY).append(`<option value="${item.value}">${item.name}</option>`);
+            }
+            if (node.category) {
+                $(DOM_ID_INPUT_CATEGORY).val(node.category);
+            }
+
+            // Render capability list.
+            const capaJsonData = $(DOM_ID_INPUT_CAPABILITIES).val();
+            if (capaJsonData === '') {
+                let htmlStr = '';
+                for (const item of CAPA_LIST) {
+                    htmlStr += `<option value="${item.value}">${item.name}</option>`;
+                }
+                htmlStr = '<select class="capa-select">' + htmlStr + '</select>';
+                htmlStr += ADD_ITEM_BTN_HTML_STR;
+                htmlStr = '<div class="capa-list-item">' + htmlStr + '</div>';
+                $(DOM_ID_CAPA_LIST).append(htmlStr);
+            } else {
+                const capaData = JSON.parse(capaJsonData);
+                let htmlStr = '';
+                for (let i = 0; i < capaData.values.length; i++) {
+                    htmlStr += '<div class="capa-list-item" style="margin-top: 8px;">';
+                    const found = CAPA_LIST.find((item) => item.value === capaData.values[i]);
+                    htmlStr += `<select class="capa-select"><option value="${found.value}">${found.name}</option></select>`;
+
+                    if (i === 0) {
+                        htmlStr += ADD_ITEM_BTN_HTML_STR;
+                    } else {
+                        htmlStr += DEL_ITEM_BTN_HTML_STR;
+                    }
+
+                    if (capaData.values[i] === 'toggle') {
+                        htmlStr += TOGGLE_SELECT_HTML_STR;
+                    }
+                    htmlStr += '</div>';
+                }
+                $(DOM_ID_CAPA_LIST).append(htmlStr);
+                $('#capa-toggle-select').val(JSON.parse(capaJsonData).toggleNum);
+            }
+
+            // Handle add button and del button onclick event.
+            $(DOM_ID_CAPA_LIST).on('click', (event) => {
+                const className = event.target.className;
+                if (className === 'add-item-btn') {         // Add a new item.
+                    const selectList = $(`${DOM_ID_CAPA_LIST} select`);
+                    const valList = [];
+                    for (let i = 0; i < selectList.length; i++) {
+                        valList.push(selectList[i].value);
+                    }
+
+                    // Render HTML
+                    let htmlStr = '';
+                    for (const item of CAPA_LIST) {
+                        if (!valList.includes(item.value)) {
+                            htmlStr += `<option value="${item.value}">${item.name}</option>`;
+                        }
+                    }
+                    if (htmlStr === '') {
+                        return;
+                    }
+                    htmlStr = '<select class="capa-select">' + htmlStr + '</select>';
+                    htmlStr += DEL_ITEM_BTN_HTML_STR;
+
+                    // Get toggle number.
+                    let iOption = htmlStr.indexOf('<option');
+                    let iToggle = htmlStr.indexOf('<option value="toggle">');
+                    if (iToggle !== -1 && iToggle === iOption) {
+                        htmlStr += TOGGLE_SELECT_HTML_STR;
+                    }
+
+                    htmlStr = '<div class="capa-list-item" style="margin-top: 8px;">' + htmlStr + '</div>';
+                    $(DOM_ID_CAPA_LIST).append(htmlStr);
+                } else if (className === 'del-item-btn') {  // Remove a item.
+                    $(event.target).parent().remove();
+                }
+            });
+
+            // Handle select onchange event.
+            $(DOM_ID_CAPA_LIST).on('change', (event) => {
+                const className = event.target.className;
+                if (className === 'capa-select') {
+                    const value = event.target.value;
+                    let htmlStr = '';
+                    if (value === 'toggle') {
+                        // Current value is toggle, add toggle elements.
+                        htmlStr = TOGGLE_SELECT_HTML_STR;
+                        $($(event.target).parent()).append(htmlStr);
+                    } else {
+                        const children = $($(event.target).parent()).children();
+                        const childNum = children.length;
+                        if (childNum > 2) {
+                            // Previous value is "toggle", remove toggle elements.
+                            for (let i = 2; i < childNum; i++) {
+                                children[i].remove();
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Handle select onfocusin event.
+            $(DOM_ID_CAPA_LIST).on('focusin', (event) => {
+                const className = event.target.className;
+                if (className === 'capa-select') {
+                    const selectList = $(`${DOM_ID_CAPA_LIST} select`);
+                    const currentVal = event.target.value;
+                    const valList = [];
+                    for (let i = 0; i < selectList.length; i++) {
+                        if (selectList[i].value !== currentVal) {
+                            valList.push(selectList[i].value);
+                        }
+                    }
+
+                    // Render HTML
+                    let htmlStr = '';
+                    for (const item of CAPA_LIST) {
+                        if (!valList.includes(item.value)) {
+                            htmlStr += `<option value="${item.value}">${item.name}</option>`;
+                        }
+                    }
+                    if (htmlStr === '') {
+                        return;
+                    }
+
+                    $(event.target).children().remove();
+                    $(event.target).append(htmlStr);
+                    $(event.target).val(currentVal);
+
+                    // Browser auto select "toggle" option.
+                    if (htmlStr.indexOf('<option value="toggle">') === 0 && $('select#capa-toggle-select').length === 0) {
+                        $($(event.target).parent()).append(TOGGLE_SELECT_HTML_STR);
+                    }
+                }
+            });
+        },
+        oneditsave() {
+            // Save capabilities data.
+            const capaList = $(`${DOM_ID_CAPA_LIST} select`);
+            const capaData = {
+                toggleNum: '1',
+                values: []
+            };
+            for (let i = 0; i < capaList.length; i++) {
+                if (capaList[i].id === 'capa-toggle-select') {
+                    capaData.toggleNum = capaList[i].value;
+                } else {
+                    capaData.values.push(capaList[i].value);
+                }
+            }
+            $(DOM_ID_INPUT_CAPABILITIES).val(JSON.stringify(capaData));
+        }
+    });
+})();
+</script>
+
+<style>
+    .form-row #capa-list .add-item-btn,
+    .form-row #capa-list .del-item-btn {
+        display: inline-block;
+        color: white;
+        font-size: 22px;
+        width: 28px;
+        height: 28px;
+        line-height: 28px;
+        text-align: center;
+        border-radius: 50%;
+        margin-left: 8px;
+        vertical-align: middle;
+        cursor: pointer;
+    }
+    .form-row #capa-list .add-item-btn {
+        background-color: #333bff;
+    }
+    .form-row #capa-list .del-item-btn {
+        background-color: #ff335d;
+    }
+    .require{
+        position:absolute;
+        left: -8px;
+        top: 10px;
+        color: red;
+        font-size: 20px;
+    }
+</style>

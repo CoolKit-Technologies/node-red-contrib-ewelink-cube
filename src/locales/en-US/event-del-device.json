@@ -1,0 +1,12 @@
+{
+    "event-del-device": {
+        "label": {
+            "name": "Name",
+            "server": "Server",
+            "device": "Device"
+        },
+        "message": {
+            "connect_fail": "Failed to connect. Please check Server configuration. "
+        }
+    }
+}

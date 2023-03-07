@@ -1,0 +1,19 @@
+{
+    "api-server": {
+        "label": {
+            "name": "Name",
+            "ip": "IP",
+            "token": "Token"
+        },
+        "message": {
+            "get_token": "GET TOKEN",
+            "please_input_ip": "Please input IP",
+            "invalid_ip": "Invalid IP",
+            "request_failed": "IP connection failed",
+            "get_token_success": "Get token success",
+            "connect_success": "Connect success",
+            "connect_fail": "Failed to connect. Please check Server configuration. ",
+            "has_token": "HAS TOKEN"
+        }
+    }
+}

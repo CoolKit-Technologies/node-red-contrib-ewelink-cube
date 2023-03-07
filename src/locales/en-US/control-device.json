@@ -1,0 +1,38 @@
+{
+    "control-device": {
+        "label": {
+            "name": "Name",
+            "server":"Server",
+            "category":"Category",
+            "device":"Device",
+            "percentControl":"Percentage control",
+            "control":"control",
+            "percentValue":"Open percentage",
+            "switch":"Switch",
+            "brightness":"Brightness",
+            "brightnessPercent":"Brightness ",
+            "colourTemperature":"Color Temp",
+            "color":"Color",
+            "colourPercent":"Color temperature",
+            "notSelect":"Please select",
+            "hexRgbValue":"RGB(eg:#FF0000)"
+        },
+        "action":{
+            "action":"Action"
+        },
+        "SelectOption":{
+            "on":"on",
+            "off":"off",
+            "keep":"keep",
+            "reverse":"reverse",
+            "all_on":"Fully Opened",
+            "all_off":"Fully Closed"
+        },
+        "message": {
+            "connect_fail": "Failed to connect. Please check Server configuration. ",
+            "integer_limit":"Enter an integer from 0 to 100",
+            "positive_integer_limit":"Enter an integer from 1 to 100",
+            "node_execution_failed":"Failed. Please check Node configuration."
+        }
+    }
+}

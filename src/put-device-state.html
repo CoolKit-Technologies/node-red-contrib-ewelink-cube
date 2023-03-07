@@ -1,0 +1,235 @@
+<script type="text/javascript">
+    (function () {
+        const DOM_ID_INPUT_DEVICE = '#node-input-device';
+        const DOM_ID_INPUT_SERVER = '#node-input-server';
+        const DOM_ID_INPUT_STATE = '#node-input-state';
+        const DOM_ID_INPUT_CATEGORY = '#node-input-category';
+        const SERVER_EMPTY = '_ADD_';
+
+        let tempList = [];
+        function renderOptions(optionList, type) {
+            let dom = type == 'category' ? $(DOM_ID_INPUT_CATEGORY) : $(DOM_ID_INPUT_DEVICE);
+            dom.get(0).options.length = 0;
+            if (!optionList.length || optionList.length < 1) return '';
+            var optionStr = `<option selected="selected" disabled="disabled" style="display:none" value=""></option>${type === 'category'?'<option value="all">ALL</option>':''}`;
+            for (const item of optionList) {
+                let content = type == 'category' ? item.display_category : item.name || item.manufacturer + item.display_category;
+                let value = type == 'category' ? item.display_category : item.serial_number;
+                if (type == 'device' || (type == 'category' && optionStr.indexOf(content) == -1)) {
+                    optionStr += '<option' + ' value=' + value + '>' + content + '</option>';
+                }
+            }
+            return optionStr;
+        }
+
+        function getDeviceList(node) {
+            const server = $(DOM_ID_INPUT_SERVER).val();
+            $.ajax({
+                type: 'POST',
+                url: 'ewelink-cube-api-v1/get-device-list',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({ id: server }),
+                success(res) {
+                    if (res.error === 0) {
+                        if (res.data.device_list instanceof Array) {
+                            tempList = [];
+                            let deviceList = res.data.device_list;
+                            for (const item of deviceList) {
+                                if (item.display_category !== 'sensor' && item.display_category !=='camera') {
+                                    //remove seed
+                                    let params = {
+                                        serial_number: item.serial_number,
+                                        display_category: item.display_category,
+                                        name: item.name,
+                                        manufacturer: item.manufacturer,
+                                        state: item.state,
+                                        tags:item.tags
+                                    };
+                                    tempList.push(params);
+                                }
+                            }
+
+                            var categoryOption = renderOptions(tempList, 'category');
+                            $(DOM_ID_INPUT_CATEGORY).append(categoryOption);
+
+                            if (node.server) {
+                                node.category && $(DOM_ID_INPUT_CATEGORY).val(node.category);
+
+                                    var categoryVal = $(DOM_ID_INPUT_CATEGORY).val();
+                                    let deviceList = [];
+                                    for(const item of tempList){
+                                        if(categoryVal === 'all' && item.tags && typeof item.tags.__thirdparty_device_id === 'string'){
+                                            deviceList.push(item);
+                                            continue;
+                                        }
+                                        if(categoryVal === item.display_category){
+                                            if(item.tags && typeof item.tags.__thirdparty_device_id === 'string'){
+                                                deviceList.push(item);
+                                            }
+                                        }
+                                    }
+                                    // if (deviceList.length === 0) deviceList = tempList;
+
+                                    var deviceOption = renderOptions(deviceList, 'device');
+                                    $(DOM_ID_INPUT_DEVICE).append(deviceOption);
+
+                                    $(DOM_ID_INPUT_DEVICE).val(node.device);
+
+                                if (node.state) {
+                                    $(DOM_ID_INPUT_STATE).val(node.state);
+                                }
+                            }
+                        }
+                    }else{
+                        if(server && server!==SERVER_EMPTY){
+                            RED.notify(`${node._('put-device-state.message.connect_fail')}`, { type: 'error' });
+                        }
+                    }
+                },
+                error(error) {
+                    if(server && server!==SERVER_EMPTY){
+                        RED.notify(`${node._('put-device-state.message.connect_fail')}`, { type: 'error' });
+                    }
+                    console.log('network error', error);
+                },
+            });
+        }
+        RED.nodes.registerType('put-device-state', {
+            category: 'eWeLink Cube',
+            color: '#5F9AFD',
+            defaults: {
+                name: {
+                    value: '',
+                },
+                server: {
+                    value: '',
+                    required: true,
+                    type: 'api-server',
+                },
+                category: {
+                    value: '',
+                    required: true,
+                },
+                device: {
+                    value: '',
+                    required: true,
+                },
+                state: {
+                    value: '',
+                    required: true,
+                },
+                number:{
+                    value:'',
+                }
+            },
+            inputs: 1,
+            outputs: 1,
+            icon: 'inject.svg',
+            label() {
+                return this.name || 'put-device-state';
+            },
+            oneditprepare() {
+                $(DOM_ID_INPUT_STATE).typedInput({
+                    type: 'json',
+                    types: ['json'],
+                });
+
+                const node = this;
+                const server = $(DOM_ID_INPUT_SERVER).val();
+                if ( server && server !== SERVER_EMPTY) {
+                    getDeviceList(node);
+                }
+
+                // $(DOM_ID_INPUT_CATEGORY).on('focus', () => {
+                //     getDeviceList(node);
+                // });
+
+                $(DOM_ID_INPUT_CATEGORY).on('change', () => {
+                    var categoryVal = $(DOM_ID_INPUT_CATEGORY).val();
+                    $(DOM_ID_INPUT_DEVICE).val('');
+
+                    let deviceList = [];
+                    for (const item of tempList) {
+                        if(categoryVal === 'all' && item.tags && typeof item.tags.__thirdparty_device_id === 'string'){
+                            deviceList.push(item);
+                            continue;
+                        }
+                        if (categoryVal === item.display_category) {
+                            if(item.tags && typeof item.tags.__thirdparty_device_id === 'string'){
+                                deviceList.push(item);
+                            }
+                        }
+                    }
+                    // if (deviceList.length === 0) deviceList = tempList;
+
+                    var deviceOption = renderOptions(deviceList, 'device');
+                    $(DOM_ID_INPUT_DEVICE).append(deviceOption);
+                });
+
+                $(DOM_ID_INPUT_DEVICE).on('change', () => {
+                    // $('#node-input-number').val('');
+                    const deviceVal = $('#node-input-device').val();
+                    for(const item of tempList){
+                        if(item.serial_number === deviceVal){
+                            if(item.tags && item.tags.__thirdparty_device_id){
+                                $('#node-input-number').val(item.tags.__thirdparty_device_id);
+                            }
+                        }
+                    }
+                });
+
+                $(DOM_ID_INPUT_SERVER).on('change', () => {
+                    $(DOM_ID_INPUT_CATEGORY).get(0).options.length = 0;
+                    $(DOM_ID_INPUT_CATEGORY).val('');
+                    $(DOM_ID_INPUT_DEVICE).get(0).options.length = 0;
+                    $(DOM_ID_INPUT_DEVICE).val('');
+                    getDeviceList(node);
+                });
+            },
+            oneditsave() {
+                const node =this;
+                if(!$(DOM_ID_INPUT_DEVICE).val()){
+                    node.device='';
+                }
+            }
+        });
+    })();
+</script>
+
+<script type="text/html" data-template-name="put-device-state">
+    <div class="form-row">
+        <label for="node-input-name" data-i18n="put-device-state.label.name"></label>
+        <input type="text" id="node-input-name" placeholder="Name" />
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-server" data-i18n="put-device-state.label.server"> Server </label>
+        <input type="text" id="node-input-server" placeholder="server" />
+    </div>
+    <div class="form-row">
+        <label for="node-input-category" data-i18n="put-device-state.label.category"> Category </label>
+        <select id="node-input-category" name="node-input-category" style="width:70%"></select>
+    </div>
+    <div class="form-row">
+        <label for="node-input-device" data-i18n="put-device-state.label.device"> Device </label>
+        <select id="node-input-device" name="node-input-device" style="width:70%"></select>
+    </div>
+    <div class="form-row" style="display:none">
+        <label for="node-input-number"> number</label>
+        <input id="node-input-number" name="node-input-number" style="width:70%">
+    </div>
+    <div class="form-row">
+        <label for="node-input-state" data-i18n="put-device-state.label.state"> state </label>
+        <input id="node-input-state" style="width:70%" />
+    </div>
+</script>
+
+<style>
+    .require{
+        position:absolute;
+        left: -8px;
+        top: 10px;
+        color: red;
+        font-size: 20px;
+    }
+</style>

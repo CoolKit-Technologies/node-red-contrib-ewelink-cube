@@ -1,0 +1,71 @@
+<script type="text/html" data-template-name="event-add-device">
+    <div class="form-row">
+        <label for="node-input-name" data-i18n="event-add-device.label.name"></label>
+        <input type="text" id="node-input-name" placeholder="Name" />
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-server" data-i18n="event-add-device.label.server"></label>
+        <input type="text" id="node-input-server" placeholder="Server" />
+    </div>
+</script>
+
+<script type="text/javascript">
+;(function () {
+    RED.nodes.registerType('event-add-device', {
+        category: 'eWeLink Cube',
+        color: '#A4B9FC',
+        defaults: {
+            name: {
+                value: '',
+            },
+            server: {
+                value: '',
+                required: true,
+                type: 'api-server',
+            },
+        },
+        inputs: 0,
+        outputs: 1,
+        paletteLabel: 'event: add device',
+        icon: 'font-awesome/fa-plus-square-o',
+        label() {
+            return this.name || 'event-add-device';
+        },
+        oneditprepare() {
+            const server = $('#node-input-server').val();
+            const node = this;
+            const SERVER_EMPTY = '_ADD_';
+            $.ajax({
+                type: 'POST',
+                url: 'ewelink-cube-api-v1/get-device-list',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({ id: server }),
+                success(res) {
+                    if (res.error !== 0) {
+                        if(server && server!==SERVER_EMPTY){
+                            RED.notify(`${node._('event-add-device.message.connect_fail')}`, { type: 'error' });
+                        }
+                    }
+                },
+                error(error) {
+                    if(server && server!==SERVER_EMPTY){
+                        RED.notify(`${node._('event-add-device.message.connect_fail')}`, { type: 'error' });
+                    }
+                    console.log('network error', error);
+                },
+            });
+        }
+    });
+})();
+</script>
+
+<style>
+    .require{
+        position:absolute;
+        left: -8px;
+        top: 10px;
+        color: red;
+        font-size: 20px;
+    }
+</style>

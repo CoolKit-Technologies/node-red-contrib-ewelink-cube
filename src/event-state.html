@@ -1,0 +1,393 @@
+<script type="text/javascript">
+    function delItem(Dom) {
+        $(Dom).parents('#main-area').remove();
+        saveAddtionState();
+    }
+
+    function saveAddtionState() {
+        let tempVal = '';
+        $('.node-input-state-class').each(function (index, item) {
+            if ($(this).val()) {
+                if (index !== $('.node-input-state-class').length - 1) {
+                    tempVal += $(this).val() + ',';
+                } else {
+                    tempVal += $(this).val();
+                }
+            }
+        });
+        $('#node-input-list').val(tempVal);
+    }
+    (function () {
+        const DOM_ID_INPUT_DEVICE = '#node-input-device';
+        const DOM_ID_INPUT_SERVER = '#node-input-server';
+        const DOM_ID_INPUT_STATE = '#node-input-state';
+        const DOM_ID_INPUT_LIST = '#node-input-list';
+        const SERVER_EMPTY = '_ADD_';
+        const ADD_ITEM = 'ADD_ITEM';
+        const INIT_ITEM = 'INIT_ITEM';
+        let tempList = [];
+        let outer_node = null;
+
+        function renderOptions(optionList) {
+            $(DOM_ID_INPUT_DEVICE).get(0).options.length = 0;
+            if (!optionList.length || optionList.length < 1) return '';
+            var optionStr = '<option selected="selected" disabled="disabled" style="display:none" value=""></option><option value="all">ALL</option>';
+            for (const item of optionList) {
+                optionStr += '<option' + ' value=' + item.serial_number + '>' + (item.name || item.manufacturer + item.display_category) + '</option>';
+            }
+            return optionStr;
+        }
+
+        function getDeviceList(node) {
+            const server = $(DOM_ID_INPUT_SERVER).val();
+            $.ajax({
+                type: 'POST',
+                url: 'ewelink-cube-api-v1/get-device-list',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({ id: server }),
+                success(res) {
+                    if (res.error === 0) {
+                        if (res.data.device_list instanceof Array) {
+                            tempList = [];
+                            let deviceList = res.data.device_list;
+                            for (const item of deviceList) {
+                                let params = {
+                                    serial_number: item.serial_number,
+                                    display_category: item.display_category,
+                                    name: item.name,
+                                    manufacturer: item.manufacturer,
+                                    state: item.state,
+                                };
+                                tempList.push(params);
+                            }
+
+                            renderDeviceOpt(node);
+                            const deviceVal = $(DOM_ID_INPUT_DEVICE).val();
+
+                            if (deviceVal && deviceVal !== 'all') {
+                                renderState(node);
+                            }
+                            $('#state').show();
+                            if (deviceVal === 'all') {
+                                $(DOM_ID_INPUT_STATE).get(0).options.length = 0;
+                                $(DOM_ID_INPUT_STATE).append(
+                                    '<option selected="selected" disabled="disabled" style="display:none" value=""></option><option value="all">ALL</option>'
+                                );
+                                $(DOM_ID_INPUT_STATE).val(node.state);
+                                $('#state').hide();
+                            }
+                            node.list && $('.node-input-state-class').remove() && $('#main-area').eq(0).nextAll().remove() && renderAddtionState();
+                        }
+                    }else{
+                        if(server && server!==SERVER_EMPTY){
+                            RED.notify(`${node._('event-state.message.connect_fail')}`, { type: 'error' });
+                        }
+                    }
+                },
+                error(error) {
+                    if(server && server!==SERVER_EMPTY){
+                        RED.notify(`${node._('event-state.message.connect_fail')}`, { type: 'error' });
+                    }
+                    console.log('network error', error);
+                },
+            });
+        }
+
+        function renderDeviceOpt(node) {
+            const deviceOption = renderOptions(tempList);
+            $(DOM_ID_INPUT_DEVICE).append(deviceOption);
+            $(DOM_ID_INPUT_DEVICE).val(node.device);
+        }
+
+        function renderState(node) {
+            $(DOM_ID_INPUT_STATE).get(0).options.length = 0;
+            let template = getStateOption(INIT_ITEM).template;
+            $(DOM_ID_INPUT_STATE).append(template);
+            node.state && $(DOM_ID_INPUT_STATE).val(node.state);
+        }
+
+        function addItem() {
+            if ($('#state').children().length >= getStateOption(ADD_ITEM).stateLength) {
+                RED.notify('Limit exceeded', { type: 'error' });
+                return;
+            }
+            let template = getStateOption(ADD_ITEM).template;
+
+            $('#state').append(
+                `<div id="main-area">
+                    <label for="node-input-state" style="visibility: hidden;"> State </label>
+                    <div class="right-area" style="margin-top:10px">
+                        <select class="node-input-state-class" name="node-input-state" style="width:322px" onChange="saveAddtionState()">
+                            ${template}
+                        </select>
+                        <button class="del-item-btn" onclick="delItem(this)" style="background-color: #FF335D;color: white">-</button>
+                    </div>
+                 </div>
+                `
+            );
+        }
+
+        function renderAddtionState() {
+            const listVal = $(DOM_ID_INPUT_LIST).val();
+            let template = getStateOption(INIT_ITEM).template;
+            if (!listVal) return;
+            const addtionList = listVal.split(',');
+            addtionList.forEach((item) => {
+                $('#state').append(
+                    `<div id="main-area">
+                        <label for="node-input-state" style="visibility: hidden;"> State </label>
+                        <div class="right-area" style="margin-top:10px">
+                            <select class="node-input-state-class" name="node-input-state" style="width:322px" onChange="saveAddtionState()">
+                                ${template}
+                            </select>
+                            <button class="del-item-btn" onclick="delItem(this)" style="background-color: #FF335D;color: white">-</button>
+                        </div>
+                     </div>
+                    `
+                );
+            });
+
+            $('.node-input-state-class').each(function (index, item) {
+                $(this).val(addtionList[index]);
+            });
+        }
+
+        function getStateOption(type) {
+            const STATE_LIST = {
+                'power': {
+                    id: 0,
+                    name: outer_node._('event-state.state.power'),
+                    value: 'power',
+                },
+                'toggle': {
+                    id: 1,
+                    name: outer_node._('event-state.state.toggle'),
+                    value: 'toggle',
+                },
+                'brightness': {
+                    id: 2,
+                    name: outer_node._('event-state.state.brightness'),
+                    value: 'brightness',
+                },
+                'color-temperature': {
+                    id: 3,
+                    name: outer_node._('event-state.state.color_temperature'),
+                    value: 'color-temperature',
+                },
+                'color-rgb': {
+                    id: 4,
+                    name: outer_node._('event-state.state.color_rgb'),
+                    value: 'color-rgb',
+                },
+                percentage: {
+                    id: 5,
+                    name: outer_node._('event-state.state.percentage'),
+                    value: 'percentage',
+                },
+                'motor-control': {
+                    id: 6,
+                    name: outer_node._('event-state.state.motor_control'),
+                    value: 'motor-control',
+                },
+                'motor-reverse': {
+                    id: 7,
+                    name: outer_node._('event-state.state.motor_reverse'),
+                    value: 'motor-reverse',
+                },
+                /* Unsupported
+                {
+                    id: 8,
+                    name: 'Startup',
+                    value: 'startup'
+                },
+                */
+                'motor-clb': {
+                    id: 9,
+                    name: outer_node._('event-state.state.motor_clb'),
+                    value: 'motor-clb',
+                },
+                'detect': {
+                    id: 10,
+                    name: outer_node._('event-state.state.detect'),
+                    value: 'detect',
+                },
+                'battery': {
+                    id: 11,
+                    name: outer_node._('event-state.state.battery'),
+                    value: 'battery',
+                },
+                'press': {
+                    id: 12,
+                    name: outer_node._('event-state.state.press'),
+                    value: 'press',
+                },
+                'rssi': {
+                    id: 13,
+                    name: outer_node._('event-state.state.rssi'),
+                    value: 'rssi',
+                },
+                'temperature':{
+                    id: 14,
+                    name: outer_node._('event-state.state.temperature'),
+                    value: 'temperature',
+                },
+                'humidity':{
+                    id: 15,
+                    name: outer_node._('event-state.state.humidity'),
+                    value: 'humidity',
+                },
+            };
+            let list = [];
+            for (const ele of tempList) {
+                if (ele.serial_number === $(DOM_ID_INPUT_DEVICE).val()) {
+                    list.push(ele.state);
+                }
+            }
+            let template =
+                '<option selected="selected" disabled="disabled" style="display:none" value="" label=""></option>' + (type === INIT_ITEM ? '<option value="all">ALL</option>' : '');
+            let stateLength = 0;
+            if (list[0]) {
+                const stateList = Object.keys(list[0]).filter((item)=>item !== 'startup');
+                stateLength = stateList.length;
+                for (const item of stateList) {
+                    template += `<option value="${item}">${STATE_LIST[item].name}</option>`;
+                }
+            }
+            return { template, stateLength };
+        }
+
+        RED.nodes.registerType('event-state', {
+            category: 'eWeLink Cube',
+            color: '#A4B9FC',
+            defaults: {
+                name: {
+                    value: '',
+                },
+                server: {
+                    value: '',
+                    required: true,
+                    type: 'api-server',
+                },
+                list: {
+                    value: '',
+                },
+                category: {
+                    value: '',
+                },
+                device: {
+                    value: '',
+                },
+                state: {
+                    value: '',
+                },
+            },
+            inputs: 0,
+            outputs: 1,
+            icon: 'bridge.svg',
+            label() {
+                return this.name || 'event-state';
+            },
+            oneditprepare() {
+                const node = this;
+                outer_node = node;
+                const server = $(DOM_ID_INPUT_SERVER).val();
+
+                if (server && server !== SERVER_EMPTY) {
+                    getDeviceList(node);
+                }
+
+                $(DOM_ID_INPUT_DEVICE).on('focus', () => {
+                    getDeviceList(node);
+                });
+
+                $(DOM_ID_INPUT_DEVICE).on('change', () => {
+                    $('#state #main-area').eq(0).nextAll().remove();
+                    $(DOM_ID_INPUT_STATE).get(0).options.length = 0;
+                    let template = getStateOption(INIT_ITEM).template;
+                    $(DOM_ID_INPUT_STATE).append(template);
+                    // saveAddtionState();
+
+                    $('#state').show();
+                    if ($(DOM_ID_INPUT_DEVICE).val() === 'all') {
+                        $('#state').hide();
+                    }
+                });
+
+                $(DOM_ID_INPUT_STATE).on('change', () => {
+                    if ($(DOM_ID_INPUT_STATE).val() === 'all') {
+                        $('#state #main-area').eq(0).nextAll().remove();
+                        $(DOM_ID_INPUT_LIST).val('');
+                    }
+                });
+
+                $('#add-item-btn').on('click', addItem);
+
+                $(DOM_ID_INPUT_SERVER).on('change', () => {
+                    $(DOM_ID_INPUT_DEVICE).get(0).options.length = 0;
+                    $(DOM_ID_INPUT_DEVICE).val('');
+                    $(DOM_ID_INPUT_STATE).get(0).options.length = 0;
+                    $(DOM_ID_INPUT_STATE).val('');
+                    $('#state #main-area').eq(0).nextAll().remove();
+                });
+            },
+            oneditsave() {
+                saveAddtionState();
+            }
+        });
+    })();
+</script>
+
+<script type="text/html" data-template-name="event-state">
+    <div class="form-row">
+        <label for="node-input-name" data-i18n="event-state.label.name"></label>
+        <input type="text" id="node-input-name" placeholder="Name" />
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-server" data-i18n="event-state.label.server"></label>
+        <input type="text" id="node-input-server" placeholder="server" />
+    </div>
+    <div class="form-row" style="display:none">
+        <label for="node-input-list"> List </label>
+        <input type="text" id="node-input-list" />
+    </div>
+    <div class="form-row">
+        <label for="node-input-device" data-i18n="event-state.label.device"></label>
+        <select id="node-input-device" placeholder="Device" style="width:70%"></select>
+    </div>
+    <div class="form-row" id="state">
+        <div id="main-area">
+            <label for="node-input-state" data-i18n="event-state.label.state"></label>
+            <div class="right-area">
+                <select placeholder="Select State" id="node-input-state" name="node-input-state" style="width:322px"></select>
+                <button class="add-item-btn" id="add-item-btn" style="background-color: #333BFF">+</button>
+            </div>
+        </div>
+    </div>
+</script>
+
+<style>
+    .right-area {
+        display: inline-block;
+    }
+
+    .add-item-btn,
+    .del-item-btn {
+        display: inline-block;
+        width: 28px;
+        height: 28px;
+        line-height: 28px;
+        border-radius: 50%;
+        border: none;
+        color: white;
+        font-size: 20px;
+    }
+
+    .require {
+        position: absolute;
+        left: -8px;
+        top: 10px;
+        color: red;
+        font-size: 20px;
+    }
+</style>

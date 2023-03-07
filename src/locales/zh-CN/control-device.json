@@ -1,0 +1,38 @@
+{
+    "control-device": {
+        "label": {
+            "name": "名称",
+            "server":"服务器",
+            "category":"设备类别",
+            "device":"设备",
+            "percentControl":"百分比控制",
+            "control":"控制",
+            "percentValue":"百分比值",
+            "switch":"开关",
+            "brightness":"亮度",
+            "brightnessPercent":"亮度百分比",
+            "colourTemperature":"色温",
+            "color":"颜色",
+            "colourPercent":"色温百分比",
+            "notSelect":"未选择",
+            "hexRgbValue":"RGB值(如:#FF0000)"
+        },
+        "action":{
+            "action":"动作"
+        },
+        "SelectOption":{
+            "on":"打开",
+            "off":"关闭",
+            "keep":"保持",
+            "reverse":"反转",
+            "all_on":"全开",
+            "all_off":"全关"
+        },
+        "message": {
+            "connect_fail": "Server已失去连接，请检查节点server配置",
+            "integer_limit":"请输入0-100的整数",
+            "positive_integer_limit":"请输入1-100的整数",
+            "node_execution_failed":"节点执行失败，请检查节点配置"
+        }
+    }
+}

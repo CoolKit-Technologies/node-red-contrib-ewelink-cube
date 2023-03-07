@@ -1,0 +1,173 @@
+<script type="text/javascript">
+    (function () {
+        let tempList = [];
+        function renderOptions(list, type) {
+            let dom = type == 'category' ? $('#node-input-category') : $('#node-input-device');
+            dom.get(0).options.length = 0;
+            if (!list.length || list.length < 1) return '';
+            var optionStr = '<option selected="selected" disabled="disabled" style="display:none" value=""></option><option value="all">ALL</option>';
+            for (const item of list) {
+                let content = type == 'category' ? item.display_category : item.name || item.manufacturer + item.display_category;
+                let value = type == 'category' ? item.display_category : item.serial_number;
+                if (type == 'device' || (type == 'category' && optionStr.indexOf(content) == -1)) {
+                    optionStr += '<option' + ' value=' + value + '>' + content + '</option>';
+                }
+            }
+            return optionStr;
+        }
+
+        function getDeviceList(node) {
+            const server = $('#node-input-server').val();
+            $.ajax({
+                type: 'POST',
+                url: 'ewelink-cube-api-v1/get-device-list',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({ id: server }),
+                success(res) {
+                    if (res.error === 0) {
+                        if (res.data.device_list instanceof Array) {
+                            tempList = [];
+                            let deviceList = res.data.device_list;
+                            for (const item of deviceList) {
+                                if (item.display_category !== 'sensor' && item.display_category !=='camera') {
+                                    let params = {
+                                        serial_number: item.serial_number,
+                                        display_category: item.display_category,
+                                        name: item.name,
+                                        manufacturer: item.manufacturer,
+                                    };
+                                    tempList.push(params);
+                                }
+                            }
+                            var categoryOption = renderOptions(tempList, 'category');
+                            $('#node-input-category').append(categoryOption);
+
+                            if (node.server) {
+                                $('#node-input-category').val(node.category);
+
+                                var categoryVal = $('#node-input-category').val();
+                                // if (node.device) {
+                                    let deviceList = [];
+                                    for (var j = 0; j <= tempList.length - 1; j++) {
+                                        if (categoryVal == tempList[j].display_category || categoryVal === 'all') {
+                                            deviceList.push(tempList[j]);
+                                        }
+                                    }
+
+                                    // if (deviceList.length === 0) deviceList = tempList;
+
+                                    var deviceOption = renderOptions(deviceList, 'device');
+                                    $('#node-input-device').append(deviceOption);
+                                    $('#node-input-device').val(node.device);
+                                // }
+                            }
+                        }
+                    }else{
+                        if(server && server!==SERVER_EMPTY){
+                            RED.notify(`${node._('get-devices.message.connect_fail')}`, { type: 'error' });
+                        }
+                    }
+                },
+                error(error) {
+                    if(server && server!==SERVER_EMPTY){
+                        RED.notify(`${node._('get-devices.message.connect_fail')}`, { type: 'error' });
+                    }
+                    console.log('network error', error);
+                },
+            });
+        }
+
+        RED.nodes.registerType('get-devices', {
+            category: 'eWeLink Cube',
+            color: '#C1C8FC',
+            defaults: {
+                name: {
+                    value: '',
+                },
+                server: {
+                    value: '',
+                    required: true,
+                    type: 'api-server',
+                },
+                category: {
+                    value: '',
+                },
+                device: {
+                    value: '',
+                },
+            },
+            inputs: 1,
+            outputs: 1,
+            icon: 'font-awesome/fa-bars',
+            label() {
+                return this.name || 'get-devices';
+            },
+            oneditprepare() {
+                const node = this;
+                const server = $('#node-input-server').val();
+                if (server && server !== '_ADD_') {
+                    getDeviceList(node);
+                }
+
+                // $('#node-input-category').on('focus', () => {
+                //     getDeviceList(node);
+                // });
+
+                $('#node-input-category').on('change', () => {
+                    var categoryVal = $('#node-input-category').val();
+                    $('#node-input-device').val('');
+                    let deviceList = [];
+                    for (var j = 0; j <= tempList.length - 1; j++) {
+                        if (categoryVal == tempList[j].display_category) {
+                            deviceList.push(tempList[j]);
+                        }
+                    }
+                    if (deviceList.length === 0) deviceList = tempList;
+                    var deviceOption = renderOptions(deviceList, 'device');
+                    $('#node-input-device').append(deviceOption);
+                    if (node.server) {
+                        $('#node-input-device').val(node.device);
+                    }
+                });
+
+                $('#node-input-server').on('change', () => {
+                    $('#node-input-category').get(0).options.length = 0;
+                    $('#node-input-category').val('');
+                    $('#node-input-device').get(0).options.length = 0;
+                    $('#node-input-device').val('');
+                    getDeviceList(node);
+                });
+            },
+        });
+    })();
+</script>
+
+<script type="text/html" data-template-name="get-devices">
+    <div class="form-row">
+        <label for="node-input-name" data-i18n="get-devices.label.name"></label>
+        <input type="text" id="node-input-name" placeholder="Name" />
+    </div>
+    <div class="form-row" style="position:relative">
+        <span class="require">*</span>
+        <label for="node-input-server" data-i18n="get-devices.label.server"></label>
+        <input type="text" id="node-input-server" placeholder="server" />
+    </div>
+    <div class="form-row">
+        <label for="node-input-category" data-i18n="get-devices.label.category"></label>
+        <select id="node-input-category" placeholder="Category" style="width:70%"></select>
+    </div>
+    <div class="form-row">
+        <label for="node-input-device" data-i18n="get-devices.label.device"></label>
+        <select id="node-input-device" placeholder="Device" style="width:70%"></select>
+    </div>
+</script>
+
+<style>
+    .require {
+        position: absolute;
+        left: -8px;
+        top: 10px;
+        color: red;
+        font-size: 20px;
+    }
+</style>

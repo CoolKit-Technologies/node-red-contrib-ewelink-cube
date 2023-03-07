@@ -1,0 +1,35 @@
+<script type="text/markdown" data-help-name="event-state">
+监听设备状态变化节点。
+
+## 配置
+
+* 名称 - 节点名称
+
+* 服务器 - 服务器节点
+
+* 设备 - 设备名称
+
+* 状态 - 设备状态
+
+## 输出
+
+状态变化的设备数据。
+
+示例：
+``` javascript
+{
+    "endpoint": {
+      "serial_number": "serial_number",
+      "third_serial_number": "third_serial_number"
+    },
+    "payload": {
+      "power": {
+        "powerState": "on"
+      },
+      "brightness": {
+        "brightness": 100
+      }
+    }
+}
+```
+</script>

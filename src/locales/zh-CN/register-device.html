@@ -1,0 +1,51 @@
+<script type="text/markdown" data-help-name="register-device">
+注册设备节点。
+
+## 配置
+
+* 名称 - 节点名称
+
+* 服务器 - 服务器节点
+
+* 设备 ID - 注册设备的 ID
+
+* 设备名称 - 注册设备的名称
+
+* 类别 - 注册设备的类别
+
+* 能力 - 注册设备的能力
+
+* 制造商 - 注册设备的制造商
+
+* 型号 - 注册设备的型号
+
+* 固件版本 - 注册设备的固件版本
+
+* 服务 IP - 当前 Node-RED 服务的 IP
+
+* 标签 - 注册设备的标签
+
+* 状态 - 注册设备的状态
+
+## 输出
+
+注册接口返回值及回调参数。
+
+示例：
+``` javascript
+{
+    "header":{
+        "name":"Response",
+        "message_id":"766234ac-a522-481f-8eb0-1057ec52fce9",
+        "version":"1"
+    },"payload":{
+        "endpoints":[
+            {
+                "serial_number":"6c29a488-42da-4375-a908-f724fca0e207",
+                "third_serial_number":"fef8f0a0-67d1-47e5-b871-9cece65e954b"
+            }
+        ]
+    }
+}
+```
+</script>
